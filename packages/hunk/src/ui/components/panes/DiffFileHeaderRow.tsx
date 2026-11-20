@@ -89,13 +89,14 @@ export function DiffFileHeaderRow({
         style={{
           width: headerStatsWidth + (reviewPresentation ? controls.viewed.length : 0),
           height: 1,
+          flexShrink: 0,
           flexDirection: "row",
           justifyContent: "flex-end",
         }}
       >
         {reviewPresentation ? (
           <box
-            style={{ height: 1, width: controls.viewed.length }}
+            style={{ height: 1, width: controls.viewed.length, flexShrink: 0 }}
             onMouseDown={beginControl}
             onMouseUp={(event) =>
               activateControl(
@@ -109,10 +110,21 @@ export function DiffFileHeaderRow({
             </text>
           </box>
         ) : null}
-        <text fg={theme.badgeAdded}>{additionsText}</text>
-        <text fg={theme.muted}> </text>
-        <text fg={theme.badgeRemoved}>{deletionsText}</text>
-        <text fg={theme.muted}> </text>
+        {/* Pad counts inside their own column so their width cannot move Viewed. */}
+        <box
+          style={{
+            width: headerStatsWidth,
+            height: 1,
+            flexShrink: 0,
+            flexDirection: "row",
+            justifyContent: "flex-end",
+          }}
+        >
+          <text fg={theme.badgeAdded}>{additionsText}</text>
+          <text fg={theme.muted}> </text>
+          <text fg={theme.badgeRemoved}>{deletionsText}</text>
+          <text fg={theme.muted}> </text>
+        </box>
       </box>
     </box>
   );

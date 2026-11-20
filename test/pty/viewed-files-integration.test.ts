@@ -102,6 +102,44 @@ async function waitForViewedReview(session: Session, options?: { deep?: boolean 
 }
 
 describe("PTY viewed files", () => {
+  test("Viewed remains in one column beside different counts and checkbox states", async () => {
+    const fixture = createViewedFilesTestFixture();
+    writeFileSync(
+      join(fixture.dir, firstFile),
+      `export const alphaKept = true;\n${Array.from({ length: 45 }, (_, index) => `export const alphaAdded${index} = ${index};`).join("\n")}\n`,
+    );
+    const session = await harness.launchHunk({
+      args: ["diff", "--mode", "smart", "--no-sidebar"],
+      cwd: fixture.dir,
+      cols: 90,
+      rows: 18,
+    });
+    try {
+      await waitForViewedReview(session, { deep: true });
+      for (const file of [firstFile, secondFile, thirdFile]) {
+        clickViewedCheckbox(session, file);
+        await harness.waitForSnapshot(session, (frame) => isViewed(frame, file));
+      }
+      const collapsed = await session.text({ immediate: true });
+      const headers = [firstFile, secondFile, thirdFile].map((file) =>
+        viewedHeader(collapsed, file),
+      );
+      expect(headers[0]).toContain("+45 -0");
+      expect(headers[1]).toContain("+1 -1");
+      expect(new Set(headers.map((row) => row.indexOf("[x] Viewed"))).size).toBe(1);
+      clickViewedCheckbox(session, thirdFile, true);
+      const expanded = await harness.waitForSnapshot(
+        session,
+        (frame) => !isViewed(frame, thirdFile) && frame.includes(thirdBody),
+      );
+      expect(viewedHeader(expanded, thirdFile).indexOf("[ ] Viewed")).toBe(
+        viewedHeader(expanded, firstFile).indexOf("[x] Viewed"),
+      );
+    } finally {
+      session.close();
+    }
+  });
+
   for (const cols of [160, 90]) {
     test(`mouse and keyboard collapse and reopen Smart files at ${cols} columns`, async () => {
       const fixture = createViewedFilesTestFixture();

@@ -47,6 +47,61 @@ async function flushTestDiffPane(setup: Awaited<ReturnType<typeof testRender>>) 
 }
 
 describe("DiffPane file disclosure", () => {
+  test.each([40, 90])(
+    "Viewed checkboxes share one column at %s cells with differing count widths",
+    async (width) => {
+      const counts = [
+        { additions: 45, deletions: 0 },
+        { additions: 1, deletions: 1 },
+        { additions: 1234, deletions: 56 },
+        { additions: 20, deletions: 0 },
+      ];
+      const files = counts.map((stats, index) => {
+        const file = createTestDiffFile({
+          id: `aligned-${index}`,
+          path: `file-${index}.ts`,
+          before: "old\n",
+          after: "new\n",
+        });
+        file.stats = stats;
+        file.statsTruncated = index === 2;
+        return file;
+      });
+      const headerStatsWidth = maxFileHeaderStatsWidth(files);
+      const setup = await testRender(
+        <box style={{ width, flexDirection: "column" }}>
+          {files.map((file, index) => (
+            <DiffFileHeaderRow
+              key={file.id}
+              file={file}
+              headerLabelWidth={width - 2 - headerStatsWidth - 1}
+              headerStatsWidth={headerStatsWidth}
+              theme={resolveTheme("github-dark-default", null)}
+              reviewPresentation={{ viewed: index !== 3, collapsed: index !== 3 }}
+            />
+          ))}
+        </box>,
+        { width, height: files.length },
+      );
+      try {
+        await flushTestDiffPane(setup);
+        const rows = setup
+          .captureCharFrame()
+          .split("\n")
+          .filter((row) => row.includes("Viewed"));
+        expect(rows).toHaveLength(files.length);
+        expect(new Set(rows.map((row) => row.indexOf("["))).size).toBe(1);
+        expect(new Set(rows.map((row) => row.indexOf("Viewed"))).size).toBe(1);
+        expect(rows[0]).toContain("+45 -0");
+        expect(rows[1]).toContain("+1 -1");
+        expect(rows[2]).toContain("+1234+ -56");
+        expect(rows[3]).toContain("[ ] Viewed");
+      } finally {
+        await act(async () => setup.renderer.destroy());
+      }
+    },
+  );
+
   test("consumes a local capture before a later remote collapse below the viewport", async () => {
     const files = ["alpha", "beta", "gamma"].map((id) =>
       createTestDiffFile({
