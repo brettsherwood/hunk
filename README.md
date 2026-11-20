@@ -1,5 +1,9 @@
 # hunk
 
+> **Personal fork:** this branch adds Smart per-file layouts, Viewed/collapse controls,
+> aligned Viewed checkboxes, and portable preferred defaults.
+> See [personal setup and maintenance](personal/README.md) to install or update this build.
+
 Hunk is a review-first terminal diff viewer for agent-authored changesets, built on [OpenTUI](https://github.com/anomalyco/opentui) and [Pierre diffs](https://www.npmjs.com/package/@pierre/diffs).
 
 **[hunk.dev](https://hunk.dev)** · [Documentation](https://hunk.dev/docs/)

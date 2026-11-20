@@ -47,9 +47,15 @@ export function bunCompilerCacheEnvironment(repoRoot: string, runtimeVersion: st
   };
 }
 
+/** Resolve the directory that receives a compiled binary and its matching bundled skills. */
+export function resolveBuildDir(repoRoot: string, env: NodeJS.ProcessEnv = process.env) {
+  const configured = env.HUNK_BUILD_DIR?.trim();
+  return configured ? path.resolve(repoRoot, configured) : path.join(repoRoot, "dist");
+}
+
 if (import.meta.main) {
   const repoRoot = REPO_ROOT;
-  const distDir = path.join(repoRoot, "dist");
+  const distDir = resolveBuildDir(repoRoot);
   const binaryName = process.platform === "win32" ? "hunk.exe" : "hunk";
   const outfile = path.join(distDir, binaryName);
   const legacyOutfile = path.join(distDir, process.platform === "win32" ? "otdiff.exe" : "otdiff");

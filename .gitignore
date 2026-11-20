@@ -47,3 +47,9 @@ autoresearch.jsonl
 autoresearch.ideas.md
 result
 .video-work/
+
+# Personal source builds keep their private runtime, toolchain, and releases here.
+/.personal/
+
+# Local support artifacts are intentionally never part of the source checkout.
+/artifacts/

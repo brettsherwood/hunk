@@ -4,6 +4,8 @@
 
 - Terminal-first diff viewer for understanding coding-agent changesets.
 - Product target is "modern desktop diff tool in a terminal", not a pager-style TUI.
+- This personal fork's setup, defaults, and maintenance workflow live in `personal/README.md`.
+  Keep its Git identity repository-local and its generated `.personal/` files ignored.
 
 ## architecture
 
@@ -178,8 +180,11 @@ ReviewIntent + caller facts -> planReviewIntent -> ReviewAction[] -> reducer -> 
 ## review behavior
 
 - Default behavior is a multi-file review stream in sidebar order.
-- Layout modes are `auto`, `split`, and `unified`. `auto` chooses split on wide terminals and unified
-  on narrow ones; explicit modes override it.
+- Layout modes are `auto`, `smart`, `split`, and `unified`. `auto` chooses split on wide terminals
+  and unified on narrow ones; `smart` chooses per file, using unified for one-sided changes and
+  split for mixed additions/deletions. Explicit modes override those choices.
+- `V` marks or unmarks the selected file Viewed; `o` independently changes its disclosure.
+  Preserve Viewed on unchanged content across reloads and reopen changed files unviewed.
 - `[` and `]` navigate hunks across the full review stream. Do not reintroduce `j`/`k` hunk navigation unless the user asks.
 - Agent context belongs beside the code, not hidden in a separate mode or workflow.
 - Agent notes are hunk-specific: show notes for the selected hunk, render them in the diff flow near the annotated row, and keep a clear spatial relationship to the code they explain.

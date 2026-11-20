@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+
+import { runPersonalSetup } from "../personal/setup.mjs";
+
+try {
+  process.exitCode = await runPersonalSetup(process.argv.slice(2));
+} catch (error) {
+  process.stderr.write(
+    "Hunk personal setup: " +
+      (error instanceof Error ? error.message : String(error)) +
+      "\n",
+  );
+  process.exitCode = 1;
+}

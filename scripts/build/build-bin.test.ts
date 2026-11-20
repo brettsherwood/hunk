@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import path from "node:path";
-import { bunCompilerCacheEnvironment, compileTargetForHost } from "./build-bin";
+import { bunCompilerCacheEnvironment, compileTargetForHost, resolveBuildDir } from "./build-bin";
 
 describe("bunCompilerCacheEnvironment", () => {
   test("keeps downloaded compile targets separate across Bun upgrades", () => {
@@ -35,5 +35,21 @@ describe("compileTargetForHost", () => {
 
   test("returns no target for platforms Hunk does not publish binaries for", () => {
     expect(compileTargetForHost("freebsd", "x64")).toBeNull();
+  });
+});
+
+describe("resolveBuildDir", () => {
+  test("keeps the ordinary build output in dist by default", () => {
+    expect(resolveBuildDir("/repo")).toBe(path.join("/repo", "dist"));
+    expect(resolveBuildDir("/repo", { HUNK_BUILD_DIR: " " })).toBe(path.join("/repo", "dist"));
+  });
+
+  test("honors an absolute or checkout-relative private build directory", () => {
+    expect(resolveBuildDir("/repo", { HUNK_BUILD_DIR: "/tmp/personal build" })).toBe(
+      path.resolve("/tmp/personal build"),
+    );
+    expect(resolveBuildDir("/repo", { HUNK_BUILD_DIR: ".personal/build/candidate" })).toBe(
+      path.join("/repo", ".personal", "build", "candidate"),
+    );
   });
 });
