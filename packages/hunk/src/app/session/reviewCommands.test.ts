@@ -64,6 +64,26 @@ function envelope(action: HunkReviewActionV1, generation: string, expectedStateR
 }
 
 describe("applySessionReviewAction", () => {
+  test("applies viewed markers through the live shared store and keeps repeated sets idempotent", () => {
+    const { producer, publication, store, file } = createTestProducer();
+    const mark = envelope(
+      { type: "files/set-viewed", fileKey: file.key, viewed: true },
+      publication.generation,
+    );
+    expect(applySessionReviewAction(producer, mark)).toMatchObject({ ok: true, stateRevision: 1 });
+    expect(store.getSnapshot().viewedFileKeys).toEqual([file.key]);
+    expect(applySessionReviewAction(producer, mark)).toMatchObject({ ok: true, stateRevision: 1 });
+    expect(
+      applySessionReviewAction(
+        producer,
+        envelope(
+          { type: "files/set-viewed", fileKey: "absent", viewed: true },
+          publication.generation,
+        ),
+      ),
+    ).toMatchObject({ ok: false, code: "file-not-found" });
+    expect(store.getSnapshot().viewedFileKeys).toEqual([file.key]);
+  });
   // Intent: a brokered action reaches the same planner a key press does, and reports where
   // the review ended up.
   test("plans one action against the live review and reports the new position", () => {

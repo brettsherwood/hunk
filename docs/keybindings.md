@@ -107,6 +107,13 @@ History-specific commands:
 
 Review and shared commands:
 
+Press `V` or click a file header's **Viewed** checkbox to mark that file reviewed and collapse its
+diff. The header and sidebar entry remain available. Press `o` or click the disclosure arrow to
+expand it again without clearing Viewed. Unchecking Viewed expands the file. Explicit hunk, note,
+or search navigation opens its target while preserving Viewed; sidebar jumps keep the header
+collapsed. Viewed survives refreshes only while the file's reviewed content is unchanged and is
+session-local. An active note composer stays visible until it is saved or cancelled.
+
 | Command id                                     | Does                                           | Default keys                 |
 | ---------------------------------------------- | ---------------------------------------------- | ---------------------------- |
 | `hunk.app.openAgentSkill`                      | Show agent skill                               | _(none)_                     |
@@ -147,6 +154,7 @@ Review and shared commands:
 | `hunk.review.stepDown`                         | Move down one line or note                     | `down`, `j`                  |
 | `hunk.review.stepUp`                           | Move up one line or note                       | `up`, `k`                    |
 | `hunk.review.toggleHunkGap`                    | Expand or collapse the selected context        | `z`                          |
+| `hunk.review.toggleFileViewed`                 | Mark or unmark the selected file viewed        | `V`                          |
 | `hunk.search.find`                             | Search diff content                            | `/`                          |
 | `hunk.search.next`                             | Next search match                              | `n`                          |
 | `hunk.search.previous`                         | Previous search match                          | `N`                          |
@@ -156,6 +164,7 @@ Review and shared commands:
 | `hunk.view.cursorLineRow`                      | Highlight the current row                      | _(none)_                     |
 | `hunk.view.layoutAuto`                         | Auto layout                                    | `0`                          |
 | `hunk.view.layoutSmart`                        | Smart per-file layout                          | `3`                          |
+| `hunk.view.toggleFileCollapsed`                | Collapse or expand the selected file           | `o`                          |
 | `hunk.view.layoutSplit`                        | Split layout                                   | `2`                          |
 | `hunk.view.layoutUnified`                      | Unified layout                                 | `1`                          |
 | `hunk.view.openThemeSelector`                  | Choose theme                                   | `t`                          |

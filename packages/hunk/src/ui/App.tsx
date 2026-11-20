@@ -71,6 +71,7 @@ import {
   useExtensionRuntimeBridge,
 } from "./hooks/useExtensionRuntimeBridge";
 import { useExtensionTrustController } from "./hooks/useExtensionTrustController";
+import { useFileReviewPresentation } from "./hooks/useFileReviewPresentation";
 import {
   useExtensionWorkspaceControls,
   type WorkspaceFileWriter,
@@ -82,7 +83,11 @@ import { usePaneSlideAnimation } from "./hooks/usePaneSlideAnimation";
 import { useThemeSelectorController } from "./hooks/useThemeSelectorController";
 import { useTimedNotice } from "./hooks/useTimedNotice";
 import { useUserNoteComposer } from "./hooks/useUserNoteComposer";
-import { useTerminalReview, type AgentNoteGeometrySnapshot } from "./hooks/useTerminalReview";
+import {
+  useTerminalReview,
+  type AgentNoteGeometrySnapshot,
+  type TerminalFilePresentation,
+} from "./hooks/useTerminalReview";
 import { useViewPreferenceQuitController } from "./hooks/useViewPreferenceQuitController";
 import type { WatchedInputRuntime } from "./hooks/useWatchedInput";
 import { agentNoteMarkupWidth } from "./lib/agentNoteGeometry";
@@ -225,11 +230,13 @@ export function App({
   const noteGeometryRef = useRef<AgentNoteGeometrySnapshot | null>(null);
   const [lineCursors, setLineCursors] = useState<LineCursor[]>([]);
   const [reviewVerticalStops, setReviewVerticalStops] = useState<ReviewVerticalStop[]>([]);
+  const filePresentationRef = useRef<TerminalFilePresentation | null>(null);
   const review = useTerminalReview({
     files: reviewFiles,
     initialShowAgentNotes: bootstrap.initialShowAgentNotes ?? false,
     lineCursors,
     reviewVerticalStops,
+    filePresentation: filePresentationRef,
     noteGeometry: noteGeometryRef,
     sourceLabel: bootstrap.changeset.sourceLabel,
     stmlEnabled,
@@ -250,6 +257,8 @@ export function App({
   const paneResizeCaptureRef = useRef<BoxRenderable | null>(null);
   const wrapToggleScrollTopRef = useRef<number | null>(null);
   const layoutToggleScrollTopRef = useRef<number | null>(null);
+  const disclosureToggleScrollTopRef = useRef<number | null>(null);
+  const fileDisclosureRequestIdRef = useRef(0);
   const cancelCopySelectionRef = useRef<(() => void) | null>(null);
   const selectionActionsRef = useRef<ReviewSelectionActionsHandle | null>(null);
   const [layoutToggleRequestId, setLayoutToggleRequestId] = useState(0);
@@ -365,6 +374,68 @@ export function App({
   const selectedFile = review.selectedFile;
   const selectedHunkIndex = review.selectedHunkIndex;
   const selectedFileId = selectedFile?.id ?? null;
+  const reviewDocument = review.store.getSnapshot().document;
+  const filePresentationIdentities = useMemo(
+    () =>
+      new Map(
+        reviewDocument.files.map((file) => [
+          file.runtimeId,
+          JSON.stringify([file.key, file.contentIdentity]),
+        ]),
+      ),
+    [reviewDocument],
+  );
+  const filePresentation = useFileReviewPresentation({
+    files: reviewFiles,
+    identityByFileId: filePresentationIdentities,
+    viewedFileIds: review.viewedFileIds,
+    isFileViewed: review.isFileViewed,
+    draftFileId: review.draftNote?.fileId,
+  });
+  /** Capture geometry before an explicit reveal restores a previously collapsed body. */
+  const expandReviewFile = useCallback(
+    (fileId: string) => {
+      if (filePresentation.isCollapsed(fileId)) {
+        disclosureToggleScrollTopRef.current = diffScrollRef.current?.scrollTop ?? 0;
+      }
+      filePresentation.expandFile(fileId);
+    },
+    [filePresentation.expandFile, filePresentation.isCollapsed],
+  );
+  filePresentationRef.current = {
+    isCollapsed: filePresentation.isCollapsed,
+    expandFile: expandReviewFile,
+    getDisclosureRequestId: () => fileDisclosureRequestIdRef.current,
+  };
+  /** Mark one file without turning its header click into a navigation or text-selection gesture. */
+  const toggleFileViewed = useCallback(
+    (fileId: string) => {
+      const viewed = review.isFileViewed(fileId);
+      if (!viewed && review.draftNote?.fileId === fileId) return;
+      disclosureToggleScrollTopRef.current = diffScrollRef.current?.scrollTop ?? 0;
+      fileDisclosureRequestIdRef.current += 1;
+      selectionActionsRef.current?.clear();
+      filePresentation.resetFileDisclosure(fileId);
+      review.setFileViewed(fileId, !viewed);
+    },
+    [
+      filePresentation.resetFileDisclosure,
+      review.draftNote?.fileId,
+      review.isFileViewed,
+      review.setFileViewed,
+    ],
+  );
+  /** Reopen viewed code independently of its completed-review mark. */
+  const toggleFileCollapsed = useCallback(
+    (fileId: string) => {
+      if (review.draftNote?.fileId === fileId) return;
+      disclosureToggleScrollTopRef.current = diffScrollRef.current?.scrollTop ?? 0;
+      fileDisclosureRequestIdRef.current += 1;
+      selectionActionsRef.current?.clear();
+      filePresentation.toggleFileCollapsed(fileId);
+    },
+    [filePresentation.toggleFileCollapsed, review.draftNote?.fileId],
+  );
   /** The review stream's current line, or null when line-level navigation is off. */
   const activeLineCursor = useMemo(
     () => (cursorLine === "off" ? null : review.lineCursor),
@@ -416,9 +487,11 @@ export function App({
   } = extensionRuntime;
   const jumpToFile = useCallback(
     (fileId: string, options?: { alignFileHeaderTop?: boolean }) => {
-      review.selectFile(fileId, { alignFileHeaderTop: options?.alignFileHeaderTop });
+      review.selectFile(fileId, {
+        alignFileHeaderTop: options?.alignFileHeaderTop || filePresentation.isCollapsed(fileId),
+      });
     },
-    [review.selectFile],
+    [filePresentation.isCollapsed, review.selectFile],
   );
 
   const openAgentNotes = useCallback(() => {
@@ -1276,6 +1349,17 @@ export function App({
         canEditActiveNote: activeEditableNoteId !== undefined && review.draftNote === null,
         canReplyToActiveNote: activeReplyableNoteId !== undefined && review.draftNote === null,
         canRefreshCurrentInput,
+        canToggleFileViewed: Boolean(selectedFileId) && review.draftNote?.fileId !== selectedFileId,
+        canToggleFileCollapsed:
+          Boolean(selectedFileId) && review.draftNote?.fileId !== selectedFileId,
+        toggleFileViewed: () => {
+          const fileId = review.getSelection().fileId;
+          if (fileId) toggleFileViewed(fileId);
+        },
+        toggleFileCollapsed: () => {
+          const fileId = review.getSelection().fileId;
+          if (fileId) toggleFileCollapsed(fileId);
+        },
         alignCurrentLine,
         applyFilePresentationToAllMatching,
         focusFilter,
@@ -1359,6 +1443,8 @@ export function App({
   // hints and the checkbox state have to stay live.
   const menus = buildAppMenus({
     commands: appCommands,
+    selectedFileViewed: selectedFileId ? review.viewedFileIds.has(selectedFileId) : false,
+    selectedFileCollapsed: selectedFileId ? filePresentation.isCollapsed(selectedFileId) : false,
     cursorLine,
     extensionCommands: extensionAppCommands.commands,
     fileViewEntries: selectedFileViewEntries,
@@ -1630,6 +1716,9 @@ export function App({
             copyDecorations={copyDecorations}
             diffContentWidth={diffContentWidth}
             expandedGapsByFileId={review.expandedGapsByFileId}
+            collapsedFileIds={filePresentation.collapsedFileIds}
+            viewedFileIds={review.viewedFileIds}
+            draftFileId={review.draftNote?.fileId}
             fileViews={fileViewLayouts}
             files={filteredFiles}
             semanticFileIdentities={semanticFileIdentities}
@@ -1665,6 +1754,8 @@ export function App({
             wrapToggleScrollTop={wrapToggleScrollTopRef.current}
             layoutToggleScrollTop={layoutToggleScrollTopRef.current}
             layoutToggleRequestId={layoutToggleRequestId}
+            disclosureScrollTopRef={disclosureToggleScrollTopRef}
+            fileDisclosureRequestId={fileDisclosureRequestIdRef.current}
             scrollEdgeRequest={scrollEdgeRequest}
             selectedFileTopAlignRequestId={review.selectedFileTopAlignRequestId}
             selectedHunkRevealRequestId={review.selectedHunkRevealRequestId}
@@ -1693,6 +1784,9 @@ export function App({
             onCopyFeedback={showTransientNotice}
             onFileViewRowFailure={reportFileViewRowFailure}
             onSelectFile={jumpToFile}
+            onToggleFileViewed={toggleFileViewed}
+            onToggleFileCollapsed={toggleFileCollapsed}
+            onExpandFile={expandReviewFile}
             onToggleGap={review.toggleGap}
             onViewportCenteredHunkChange={(fileId, hunkIndex) =>
               review.anchorSelection(fileId, hunkIndex)

@@ -23,8 +23,14 @@ export function shouldRenderInStreamFileHeader(sectionIndex: number) {
 }
 
 /** Build the in-stream header heights for the current review stream. */
-export function buildInStreamFileHeaderHeights(files: DiffFile[]) {
-  return files.map((_, index) => getInStreamFileHeaderHeight(index));
+export function buildInStreamFileHeaderHeights(
+  files: DiffFile[],
+  collapsedFileIds?: ReadonlySet<string>,
+) {
+  // A collapsed first file still needs a stream extent so later headers cannot retire its pinned owner.
+  return files.map((file, index) =>
+    index === 0 && collapsedFileIds?.has(file.id) ? 1 : getInStreamFileHeaderHeight(index),
+  );
 }
 
 /** Build absolute section offsets from file order, header heights, measured body heights, and file gap. */

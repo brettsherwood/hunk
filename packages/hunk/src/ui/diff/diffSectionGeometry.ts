@@ -48,6 +48,28 @@ export interface DiffSectionGeometry extends SectionGeometry<PlannedHunkBounds> 
   rowBoundsByStableKey: Map<string, DiffSectionRowBounds>;
 }
 
+const COLLAPSED_SECTION_GEOMETRY = new WeakMap<DiffFile, DiffSectionGeometry>();
+
+/** Remove every interactive body row while keeping the semantic file and hunk extents intact. */
+export function collapsedDiffSectionGeometry(file: DiffFile): DiffSectionGeometry {
+  let geometry = COLLAPSED_SECTION_GEOMETRY.get(file);
+  if (!geometry) {
+    geometry = {
+      bodyHeight: 0,
+      hunkAnchorRows: new Map(),
+      hunkBounds: new Map(),
+      hunkSpans: file.metadata.hunks,
+      lineNumberDigits: String(findMaxLineNumber(file)).length,
+      plannedRows: [],
+      rowBounds: [],
+      rowBoundsByKey: new Map(),
+      rowBoundsByStableKey: new Map(),
+    };
+    COLLAPSED_SECTION_GEOMETRY.set(file, geometry);
+  }
+  return geometry;
+}
+
 /** Fingerprint loaded source text so same-length edits invalidate geometry. */
 function sourceTextFingerprint(text: string) {
   let hash = 2166136261;

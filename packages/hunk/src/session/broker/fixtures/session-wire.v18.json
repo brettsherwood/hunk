@@ -26,9 +26,7 @@
         "inputKind": "vcs",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "change-request",
           "provider": "GitHub",
@@ -54,14 +52,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -76,14 +68,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -143,14 +129,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "liveCommentCount": 0,
         "liveComments": [],
@@ -190,9 +170,7 @@
         "inputKind": "vcs",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "change-request",
           "provider": "GitHub",
@@ -218,14 +196,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -240,14 +212,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -307,14 +273,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -350,14 +310,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -370,14 +324,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -421,9 +369,7 @@
         "inputKind": "show",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "commit",
           "provider": "git",
@@ -446,14 +392,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -468,14 +408,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -535,14 +469,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "liveCommentCount": 0,
         "liveComments": [],
@@ -582,9 +510,7 @@
         "inputKind": "show",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "commit",
           "provider": "git",
@@ -607,14 +533,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -629,14 +549,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -696,14 +610,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -739,14 +647,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -759,14 +661,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -810,9 +706,7 @@
         "inputKind": "stash-show",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "commit",
           "provider": "git",
@@ -835,14 +729,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -857,14 +745,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -924,14 +806,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "liveCommentCount": 0,
         "liveComments": [],
@@ -971,9 +847,7 @@
         "inputKind": "stash-show",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "commit",
           "provider": "git",
@@ -996,14 +870,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -1018,14 +886,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -1085,14 +947,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -1128,14 +984,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -1148,14 +998,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -1198,9 +1042,7 @@
         "inputKind": "patch",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "comparison",
           "provider": "git",
@@ -1238,14 +1080,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -1260,14 +1096,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -1327,14 +1157,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "liveCommentCount": 0,
         "liveComments": [],
@@ -1373,9 +1197,7 @@
         "inputKind": "patch",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "comparison",
           "provider": "git",
@@ -1413,14 +1235,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -1435,14 +1251,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -1502,14 +1312,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -1545,14 +1349,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -1565,14 +1363,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -1615,9 +1407,7 @@
         "inputKind": "difftool",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "comparison",
           "provider": "git",
@@ -1655,14 +1445,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -1677,14 +1461,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -1744,14 +1522,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "liveCommentCount": 0,
         "liveComments": [],
@@ -1790,9 +1562,7 @@
         "inputKind": "difftool",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "comparison",
           "provider": "git",
@@ -1830,14 +1600,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -1852,14 +1616,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -1919,14 +1677,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -1962,14 +1714,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -1982,14 +1728,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -2032,9 +1772,7 @@
         "inputKind": "diff",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "change-request",
           "provider": "GitHub",
@@ -2060,14 +1798,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -2082,14 +1814,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -2149,14 +1875,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "liveCommentCount": 0,
         "liveComments": [],
@@ -2195,9 +1915,7 @@
         "inputKind": "diff",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "change-request",
           "provider": "GitHub",
@@ -2223,14 +1941,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -2245,14 +1957,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -2312,14 +2018,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -2355,14 +2055,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -2375,14 +2069,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -2426,9 +2114,7 @@
         "inputKind": "show",
         "title": "wire corpus",
         "sourceLabel": "/repo",
-        "experimentalFeatures": [
-          "stml"
-        ],
+        "experimentalFeatures": ["stml"],
         "review": {
           "kind": "commit",
           "provider": "git",
@@ -2451,14 +2137,8 @@
               {
                 "index": 0,
                 "header": "@@ -1,1 +1,1 @@",
-                "oldRange": [
-                  1,
-                  1
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [1, 1],
+                "newRange": [1, 1]
               }
             ],
             "patch": "@@ -1,2 +1,2 @@\n-export const value = 1;\n+export const value = 2;\n"
@@ -2473,14 +2153,8 @@
               {
                 "index": 0,
                 "header": "@@ -0,0 +1,1 @@",
-                "oldRange": [
-                  0,
-                  0
-                ],
-                "newRange": [
-                  1,
-                  1
-                ]
+                "oldRange": [0, 0],
+                "newRange": [1, 1]
               }
             ]
           }
@@ -2540,14 +2214,8 @@
         "selectedFileId": "file-renamed",
         "selectedFilePath": "src/renamed.ts",
         "selectedHunkIndex": 0,
-        "selectedHunkOldRange": [
-          1,
-          1
-        ],
-        "selectedHunkNewRange": [
-          1,
-          1
-        ],
+        "selectedHunkOldRange": [1, 1],
+        "selectedHunkNewRange": [1, 1],
         "showAgentNotes": true,
         "noteMarkupWidth": 72,
         "liveCommentCount": 2,
@@ -2583,14 +2251,8 @@
             "source": "user",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",
@@ -2603,14 +2265,8 @@
             "source": "agent",
             "filePath": "src/renamed.ts",
             "hunkIndex": 0,
-            "oldRange": [
-              1,
-              1
-            ],
-            "newRange": [
-              1,
-              1
-            ],
+            "oldRange": [1, 1],
+            "newRange": [1, 1],
             "body": "A user note",
             "title": "Note title",
             "author": "reviewer",

@@ -62,6 +62,7 @@ import {
   type ReviewVerticalStop,
 } from "../../lib/reviewVerticalStops";
 import {
+  collapsedDiffSectionGeometry,
   measureDiffSectionGeometry,
   type DiffSectionGeometry,
 } from "../../diff/diffSectionGeometry";
@@ -72,7 +73,6 @@ import {
   buildInStreamFileHeaderHeights,
   collectIntersectingFileSectionIds,
   findHeaderOwningFileSection,
-  shouldRenderInStreamFileHeader,
   type FileSectionLayout,
 } from "../../lib/fileSectionLayout";
 import { diffHunkId, diffSectionId } from "../../lib/ids";
@@ -312,6 +312,7 @@ const EMPTY_FILE_LAYOUTS: ReadonlyMap<string, ResolvedLayout> = new Map();
 const EMPTY_FILE_VIEWS: ReadonlyMap<string, ResolvedFileViewLayout> = new Map();
 const EMPTY_LINE_HIGHLIGHTS: ReadonlyMap<string, readonly ValidatedLineHighlight[]> = new Map();
 const EMPTY_SOURCE_STATUS_BY_FILE_ID: Record<string, FileSourceStatus> = {};
+const EMPTY_FILE_IDS: ReadonlySet<string> = new Set();
 const NOOP_TOGGLE_GAP = () => {};
 
 /** Render the main multi-file review stream. */
@@ -321,6 +322,9 @@ export function DiffPane({
   expandedGapsByFileId = EMPTY_EXPANDED_GAPS_BY_FILE_ID,
   fileViews = EMPTY_FILE_VIEWS,
   files,
+  collapsedFileIds = EMPTY_FILE_IDS,
+  viewedFileIds,
+  draftFileId,
   semanticFileIdentities,
   offloadLargeDiff = false,
   lineHighlights = EMPTY_LINE_HIGHLIGHTS,
@@ -359,6 +363,8 @@ export function DiffPane({
   wrapToggleScrollTop,
   layoutToggleScrollTop = null,
   layoutToggleRequestId = 0,
+  disclosureScrollTopRef,
+  fileDisclosureRequestId = 0,
   scrollEdgeRequest,
   selectedFileTopAlignRequestId = 0,
   selectedHunkRevealRequestId,
@@ -386,6 +392,9 @@ export function DiffPane({
   onFileViewRowFailure,
   onScrollCodeHorizontally = () => {},
   onSelectFile,
+  onToggleFileViewed,
+  onToggleFileCollapsed,
+  onExpandFile,
   onToggleGap = NOOP_TOGGLE_GAP,
   onLineCursorsChange,
   onReviewVerticalStopsChange,
@@ -400,6 +409,9 @@ export function DiffPane({
   /** Validated alternate layouts, keyed by file id; raw Pierre remains the fallback. */
   fileViews?: ReadonlyMap<string, ResolvedFileViewLayout>;
   files: DiffFile[];
+  collapsedFileIds?: ReadonlySet<string>;
+  viewedFileIds?: ReadonlySet<string>;
+  draftFileId?: string;
   /** Already-projected semantic identities for selection invalidation. */
   semanticFileIdentities?: readonly string[];
   /** Offload eligible syntax highlighting for this launch. */
@@ -423,6 +435,8 @@ export function DiffPane({
     id: number;
     placement: LineRevealPlacement;
     target?: { fileId: string; stableKey: string };
+    /** Preserve the synchronous command order before React coalesces an input burst. */
+    origin?: { fileTopToken: number; hunkToken: number; fileDisclosureRequestId?: number };
   };
   lineCursorAlignmentRequest?: { id: number; alignment: CurrentLineAlignment };
   scrollToNote?: boolean;
@@ -447,6 +461,10 @@ export function DiffPane({
   wrapToggleScrollTop: number | null;
   layoutToggleScrollTop?: number | null;
   layoutToggleRequestId?: number;
+  /** Consume the pre-action viewport once; unrelated geometry changes use the live native scroll. */
+  disclosureScrollTopRef?: RefObject<number | null>;
+  /** Retire pending row reveals when the reviewer explicitly changes file disclosure. */
+  fileDisclosureRequestId?: number;
   scrollEdgeRequest?: { id: number; edge: "top" | "bottom" };
   selectedFileTopAlignRequestId?: number;
   selectedHunkRevealRequestId?: number;
@@ -478,6 +496,9 @@ export function DiffPane({
   onFileViewRowFailure?: (failure: FileViewRowFailure) => void;
   onScrollCodeHorizontally?: (delta: number) => void;
   onSelectFile: (fileId: string) => void;
+  onToggleFileViewed?: (fileId: string) => void;
+  onToggleFileCollapsed?: (fileId: string) => void;
+  onExpandFile?: (fileId: string) => void;
   onToggleGap?: (fileId: string, gapKey: string) => void;
   onLineCursorsChange?: (cursors: LineCursor[]) => void;
   onReviewVerticalStopsChange?: (stops: ReviewVerticalStop[]) => void;
@@ -542,6 +563,22 @@ export function DiffPane({
       selectFileCallbacksRef.current.set(fileId, callback);
     }
     return callback;
+  }, []);
+  const headerActionsRef = useRef({ onToggleFileViewed, onToggleFileCollapsed });
+  headerActionsRef.current = { onToggleFileViewed, onToggleFileCollapsed };
+  const headerCallbacksRef = useRef(
+    new Map<string, { viewed: () => void; collapsed: () => void }>(),
+  );
+  const headerCallbacks = useCallback((fileId: string) => {
+    let callbacks = headerCallbacksRef.current.get(fileId);
+    if (!callbacks) {
+      callbacks = {
+        viewed: () => headerActionsRef.current.onToggleFileViewed?.(fileId),
+        collapsed: () => headerActionsRef.current.onToggleFileCollapsed?.(fileId),
+      };
+      headerCallbacksRef.current.set(fileId, callbacks);
+    }
+    return callbacks;
   }, []);
 
   // Add-note row handlers are cached per file so mounted DiffSections keep a stable prop identity,
@@ -871,6 +908,9 @@ export function DiffPane({
   const prevScrollTopRef = useRef(0);
   const hasReadScrollViewportRef = useRef(false);
   const previousSectionGeometryRef = useRef<DiffSectionGeometry[] | null>(null);
+  const collapseSignature = JSON.stringify([...collapsedFileIds].sort());
+  const previousCollapseSignatureRef = useRef(collapseSignature);
+  const previousSectionHeaderHeightsRef = useRef<number[]>([]);
   const previousFilesRef = useRef<DiffFile[]>(files);
   const fileLayoutSignature = useMemo(
     () =>
@@ -1105,12 +1145,16 @@ export function DiffPane({
     };
   }, [activateRapidScrollOverscan, clearAddNoteHover, files.length, height, scrollRef, wrapLines]);
 
-  const sectionHeaderHeights = useMemo(() => buildInStreamFileHeaderHeights(files), [files]);
+  const sectionHeaderHeights = useMemo(
+    () => buildInStreamFileHeaderHeights(files, collapsedFileIds),
+    [files, collapsedFileIds],
+  );
   const reserveAddNoteColumn = Boolean(onStartUserNoteAtHunk);
 
   const baseSectionGeometry = useMemo(
     () =>
       files.map((file) => {
+        if (collapsedFileIds.has(file.id)) return collapsedDiffSectionGeometry(file);
         const plannedFileView = fileViewRenderPlans.get(file.id);
         if (plannedFileView) {
           return measureFileViewGeometry({
@@ -1137,6 +1181,7 @@ export function DiffPane({
       }),
     [
       diffContentWidth,
+      collapsedFileIds,
       expandedGapsByFileId,
       fileViewRenderPlans,
       files,
@@ -1162,6 +1207,7 @@ export function DiffPane({
   const sectionGeometry = useMemo(
     () =>
       files.map((file, index) => {
+        if (collapsedFileIds.has(file.id)) return baseSectionGeometry[index]!;
         if (fileViewRenderPlans.has(file.id)) {
           return baseSectionGeometry[index]!;
         }
@@ -1186,6 +1232,7 @@ export function DiffPane({
       }),
     [
       allAgentNotesByFile,
+      collapsedFileIds,
       baseSectionGeometry,
       diffContentWidth,
       expandedGapsByFileId,
@@ -1270,7 +1317,7 @@ export function DiffPane({
     () =>
       selectionInvalidationIdentity({
         layout: fileLayouts.get(files[0]?.id ?? "") ?? layout,
-        fileLayoutSignature,
+        fileLayoutSignature: `${fileLayoutSignature}:${collapseSignature}:${sectionHeaderHeights.join(",")}`,
         wrapLines,
         width: diffContentWidth,
         // The pane's planned height is stable from first paint; OpenTUI publishes its smaller
@@ -1292,6 +1339,8 @@ export function DiffPane({
       fileLayouts,
       files,
       fileLayoutSignature,
+      collapseSignature,
+      sectionHeaderHeights,
       scrollViewport.height,
       sectionGeometry,
       selectionContentIdentities,
@@ -1384,6 +1433,12 @@ export function DiffPane({
       layout,
       fileLayouts,
       pinnedHeaderFile,
+      viewedFileIds,
+      collapsedFileIds,
+      hiddenHeaderFileId:
+        files[0]?.id === pinnedHeaderFileId && collapsedFileIds.has(files[0].id)
+          ? files[0].id
+          : null,
       reserveAddNoteColumn,
       sectionGeometry,
       showHunkHeaders,
@@ -1402,6 +1457,9 @@ export function DiffPane({
       layout,
       fileLayouts,
       pinnedHeaderFile,
+      pinnedHeaderFileId,
+      viewedFileIds,
+      collapsedFileIds,
       reserveAddNoteColumn,
       sectionGeometry,
       showHunkHeaders,
@@ -1417,8 +1475,9 @@ export function DiffPane({
     () =>
       activeNoteId
         ? null
-        : (lineCursor ?? firstLineCursorInHunk(lineCursors, selectedFileId, selectedHunkIndex)),
-    [activeNoteId, lineCursor, lineCursors, selectedFileId, selectedHunkIndex],
+        : ((lineCursor && !collapsedFileIds.has(lineCursor.fileId) ? lineCursor : null) ??
+          firstLineCursorInHunk(lineCursors, selectedFileId, selectedHunkIndex)),
+    [activeNoteId, collapsedFileIds, lineCursor, lineCursors, selectedFileId, selectedHunkIndex],
   );
 
   // One object per cursor move, so the section and row memos below only see a new reference when
@@ -1559,6 +1618,16 @@ export function DiffPane({
     selectionCommentKeyLabel,
     selectionCopyKeyLabel,
   });
+  /** Retire row selection and hover controls before a file-header action changes their geometry. */
+  const beginHeaderAction = useCallback(() => {
+    clearCopySelection();
+    suppressCopyNativeSelection();
+    clearAddNoteHover();
+  }, [clearAddNoteHover, clearCopySelection, suppressCopyNativeSelection]);
+
+  useLayoutEffect(() => {
+    clearAddNoteHover();
+  }, [clearAddNoteHover, collapseSignature]);
 
   /** Clamp one requested review scroll target against the latest planned content height. */
   const clampReviewScrollTop = useCallback(
@@ -2000,6 +2069,12 @@ export function DiffPane({
   );
 
   useLayoutEffect(() => {
+    const collapseChanged = previousCollapseSignatureRef.current !== collapseSignature;
+    const capturedDisclosureTop = disclosureScrollTopRef?.current ?? null;
+    if (disclosureScrollTopRef) disclosureScrollTopRef.current = null;
+    previousCollapseSignatureRef.current = collapseSignature;
+    const previousHeaderHeights = previousSectionHeaderHeightsRef.current;
+    previousSectionHeaderHeightsRef.current = sectionHeaderHeights;
     const layoutChanged = previousLayoutRef.current !== fileLayoutSignature;
     const explicitLayoutToggle = previousLayoutToggleRequestIdRef.current !== layoutToggleRequestId;
     const wrapChanged = previousWrapLinesRef.current !== wrapLines;
@@ -2008,9 +2083,56 @@ export function DiffPane({
     const currentDraftNoteId = draftNoteId;
     const draftChanged = previousDraftNoteIdRef.current !== currentDraftNoteId;
 
+    if (collapseChanged && previousSectionMetrics && previousFiles.length > 0) {
+      const previousScrollTop =
+        capturedDisclosureTop ?? scrollRef.current?.scrollTop ?? scrollViewport.top;
+      const previousHeights =
+        previousHeaderHeights.length === previousFiles.length
+          ? previousHeaderHeights
+          : buildInStreamFileHeaderHeights(previousFiles);
+      const anchor = findViewportRowAnchor(
+        previousFiles,
+        previousSectionMetrics,
+        previousScrollTop,
+        previousHeights,
+        lastViewportRowAnchorRef.current?.stableKey,
+        fileGap,
+      );
+      const previousLayouts = buildFileSectionLayouts(
+        previousFiles,
+        previousSectionMetrics.map((metrics) => metrics.bodyHeight),
+        previousHeights,
+        fileGap,
+      );
+      const previousOwner = findHeaderOwningFileSection(
+        previousLayouts,
+        Math.max(0, previousScrollTop - 1),
+      );
+      const owner = previousOwner
+        ? fileSectionLayouts.find((section) => section.fileId === previousOwner.fileId)
+        : undefined;
+      const anchorTop = anchor
+        ? resolveViewportRowAnchorTop(files, sectionGeometry, anchor, sectionHeaderHeights, fileGap)
+        : owner
+          ? owner.headerTop + (previousScrollTop - (previousOwner?.headerTop ?? 0))
+          : previousScrollTop;
+      const viewportHeight = scrollRef.current?.viewport.height || scrollViewport.height;
+      const nextTop = clampReviewScrollTop(anchorTop, viewportHeight);
+      supersedePendingSelectionReveal();
+      clearPendingFileTopAlign();
+      suppressViewportSelectionSync();
+      setScrollViewport({ top: nextTop, height: viewportHeight });
+      scrollRef.current?.scrollTo(nextTop);
+      previousSectionGeometryRef.current = sectionGeometry;
+      previousFilesRef.current = files;
+    }
+
     if (draftChanged && previousSectionMetrics && previousFiles.length > 0) {
       const previousScrollTop = scrollRef.current?.scrollTop ?? scrollViewport.top;
-      const previousSectionHeaderHeights = buildInStreamFileHeaderHeights(previousFiles);
+      const previousSectionHeaderHeights =
+        previousHeaderHeights.length === previousFiles.length
+          ? previousHeaderHeights
+          : buildInStreamFileHeaderHeights(previousFiles);
       const anchor =
         lastViewportRowAnchorRef.current ??
         findViewportRowAnchor(
@@ -2100,7 +2222,10 @@ export function DiffPane({
     }
 
     if ((layoutChanged || wrapChanged) && previousSectionMetrics && previousFiles.length > 0) {
-      const previousSectionHeaderHeights = buildInStreamFileHeaderHeights(previousFiles);
+      const previousSectionHeaderHeights =
+        previousHeaderHeights.length === previousFiles.length
+          ? previousHeaderHeights
+          : buildInStreamFileHeaderHeights(previousFiles);
       const previousScrollTop =
         // Prefer the synchronously captured pre-toggle position so anchor restoration does not
         // race the polling-based viewport snapshot.
@@ -2158,6 +2283,12 @@ export function DiffPane({
     previousFilesRef.current = files;
   }, [
     draftNoteFileId,
+    collapseSignature,
+    disclosureScrollTopRef,
+    fileSectionLayouts,
+    clampReviewScrollTop,
+    clearPendingFileTopAlign,
+    supersedePendingSelectionReveal,
     draftNoteId,
     fileGap,
     files,
@@ -2285,6 +2416,10 @@ export function DiffPane({
     const revealRequested = revealFollowsSelectionChange
       ? prevSelectedAnchorIdRef.current !== selectedAnchorId
       : previousSelectedHunkRevealRequestIdRef.current !== selectedHunkRevealRequestId;
+    if (revealRequested && selectedFileId && collapsedFileIds.has(selectedFileId)) {
+      onExpandFile?.(selectedFileId);
+      return;
+    }
     previousSelectedHunkRevealRequestIdRef.current = selectedHunkRevealRequestId;
 
     if (!selectedAnchorId && !selectedEstimatedHunkBounds) {
@@ -2404,6 +2539,8 @@ export function DiffPane({
     selectedFileIndex,
     selectedHunkIndex,
     selectedHunkRevealRequestId,
+    collapsedFileIds,
+    onExpandFile,
     selectedFileBodyTop,
     selectedNoteHeight,
     selectedNoteTop,
@@ -2411,16 +2548,67 @@ export function DiffPane({
   ]);
 
   const previousLineCursorRevealRequestIdRef = useRef(lineCursorRevealRequest.id);
+  const lineRevealNavigationSignature = JSON.stringify([
+    lineCursorRevealRequest.id,
+    selectedHunkRevealRequestId,
+    selectedFileTopAlignRequestId,
+    lineCursorAlignmentRequest.id,
+    scrollEdgeRequest?.id,
+    fileDisclosureRequestId,
+  ]);
+  const latestLineRevealNavigationRef = useRef(lineRevealNavigationSignature);
+  latestLineRevealNavigationRef.current = lineRevealNavigationSignature;
+  const pendingLineRevealOriginRef = useRef<{
+    id: number;
+    navigation: string;
+    contentAvailable: boolean;
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (previousLineCursorRevealRequestIdRef.current === lineCursorRevealRequest.id) {
       return;
     }
-    previousLineCursorRevealRequestIdRef.current = lineCursorRevealRequest.id;
-
+    const requestOrigin = lineCursorRevealRequest.origin;
+    if (
+      requestOrigin &&
+      (requestOrigin.fileTopToken !== selectedFileTopAlignRequestId ||
+        (selectedHunkRevealRequestId !== undefined &&
+          requestOrigin.hunkToken !== selectedHunkRevealRequestId) ||
+        (requestOrigin.fileDisclosureRequestId !== undefined &&
+          requestOrigin.fileDisclosureRequestId !== fileDisclosureRequestId))
+    ) {
+      previousLineCursorRevealRequestIdRef.current = lineCursorRevealRequest.id;
+      pendingLineRevealOriginRef.current = null;
+      return;
+    }
+    let origin = pendingLineRevealOriginRef.current;
+    if (!origin || origin.id !== lineCursorRevealRequest.id) {
+      origin = {
+        id: lineCursorRevealRequest.id,
+        navigation: lineRevealNavigationSignature,
+        contentAvailable: false,
+      };
+      pendingLineRevealOriginRef.current = origin;
+    }
+    if (origin.navigation !== lineRevealNavigationSignature) {
+      previousLineCursorRevealRequestIdRef.current = lineCursorRevealRequest.id;
+      pendingLineRevealOriginRef.current = null;
+      return;
+    }
     const scrollBox = scrollRef.current;
     const requestTarget = lineCursorRevealRequest.target;
     if (!scrollBox || (!lineCursor && !requestTarget)) {
+      return;
+    }
+
+    const targetFileId = requestTarget?.fileId ?? lineCursor?.fileId;
+    if (targetFileId && collapsedFileIds.has(targetFileId)) {
+      if (origin.contentAvailable) {
+        previousLineCursorRevealRequestIdRef.current = lineCursorRevealRequest.id;
+        pendingLineRevealOriginRef.current = null;
+        return;
+      }
+      onExpandFile?.(targetFileId);
       return;
     }
 
@@ -2432,7 +2620,7 @@ export function DiffPane({
     if (!bounds) {
       return;
     }
-
+    origin.contentAvailable = true;
     const viewportHeight = scrollBox.viewport.height || scrollViewport.height;
     // A jump lands the line where hunk and note reveals land theirs; stepping only closes the
     // gap to the viewport edge, so a held key does not drag the whole stream past the marker.
@@ -2460,18 +2648,43 @@ export function DiffPane({
     supersedePendingSelectionReveal();
     clearPendingFileTopAlign();
 
-    if (revealScrollTop === scrollBox.scrollTop) {
-      return;
-    }
-
+    const desiredTop = clampReviewScrollTop(revealScrollTop, viewportHeight);
+    /** Wait for native content sizing after a body opens before retiring its exact-line request. */
+    const scrollExactLine = () => {
+      if (
+        latestLineRevealNavigationRef.current !== lineRevealNavigationSignature ||
+        previousLineCursorRevealRequestIdRef.current === lineCursorRevealRequest.id
+      )
+        return;
+      const currentScrollBox = scrollRef.current;
+      if (!currentScrollBox) return;
+      currentScrollBox.scrollTo(desiredTop);
+      if (Math.abs(currentScrollBox.scrollTop - desiredTop) <= 0.5) {
+        previousLineCursorRevealRequestIdRef.current = lineCursorRevealRequest.id;
+      }
+    };
+    // Paint the destination rows while Yoga still reports the previously collapsed native extent.
+    setScrollViewport((current) =>
+      current.top === desiredTop && current.height === viewportHeight
+        ? current
+        : { top: desiredTop, height: viewportHeight },
+    );
     suppressViewportSelectionSync();
-    scrollBox.scrollTo(clampReviewScrollTop(revealScrollTop, viewportHeight));
+    scrollExactLine();
+    const timeouts =
+      previousLineCursorRevealRequestIdRef.current === lineCursorRevealRequest.id
+        ? []
+        : [0, 16, 48].map((delay) => setTimeout(scrollExactLine, delay));
+    return () => timeouts.forEach(clearTimeout);
   }, [
     clampReviewScrollTop,
     clearPendingFileTopAlign,
     lineCursor,
     lineCursorBoundsOf,
     lineCursorRevealRequest,
+    lineRevealNavigationSignature,
+    collapsedFileIds,
+    onExpandFile,
     rowBoundsInStream,
     scrollRef,
     scrollViewport.height,
@@ -2570,6 +2783,18 @@ export function DiffPane({
                 headerStatsWidth={headerStatsWidth}
                 theme={theme}
                 onSelect={() => onSelectFile(pinnedHeaderFile.id)}
+                reviewPresentation={
+                  viewedFileIds
+                    ? {
+                        viewed: viewedFileIds.has(pinnedHeaderFile.id),
+                        collapsed: collapsedFileIds.has(pinnedHeaderFile.id),
+                      }
+                    : undefined
+                }
+                canCollapse={draftFileId !== pinnedHeaderFile.id}
+                onToggleViewed={headerCallbacks(pinnedHeaderFile.id).viewed}
+                onToggleCollapsed={headerCallbacks(pinnedHeaderFile.id).collapsed}
+                onPointerActionStart={beginHeaderAction}
               />
             </box>
           ) : null}
@@ -2632,6 +2857,12 @@ export function DiffPane({
                         offloadLargeDiff={offloadLargeDiff}
                         headerLabelWidth={headerLabelWidth}
                         headerStatsWidth={headerStatsWidth}
+                        collapsed={collapsedFileIds.has(file.id)}
+                        viewed={viewedFileIds?.has(file.id)}
+                        canCollapse={draftFileId !== file.id}
+                        onToggleViewed={headerCallbacks(file.id).viewed}
+                        onToggleCollapsed={headerCallbacks(file.id).collapsed}
+                        onPointerActionStart={beginHeaderAction}
                         layout={fileLayouts.get(file.id) ?? layout}
                         selectedHunkIndex={file.id === selectedFileId ? selectedHunkIndex : -1}
                         copySelectedRowRanges={copySelectedRowKeysByFile.get(file.id)}
@@ -2645,7 +2876,12 @@ export function DiffPane({
                         }
                         sectionGeometry={sectionGeometry[index]}
                         separatorWidth={separatorWidth}
-                        showHeader={shouldRenderInStreamFileHeader(index)}
+                        showHeader={(sectionHeaderHeights[index] ?? 0) > 0}
+                        hideHeaderContent={
+                          index === 0 &&
+                          collapsedFileIds.has(file.id) &&
+                          pinnedHeaderFileId === file.id
+                        }
                         separatorHeight={index > 0 ? fileGap : 0}
                         showLineNumbers={showLineNumbers}
                         showHunkHeaders={showHunkHeaders}

@@ -27,6 +27,7 @@ export type ReviewAction =
       activeNoteId?: string;
     }
   | { type: "filter/set"; filter: string }
+  | { type: "files/set-viewed"; fileKey: string; viewed: boolean }
   | { type: "notes/set-visibility"; visible: boolean }
   | { type: "notes/add-live"; notes: readonly ReviewStoredNote[] }
   | { type: "notes/remove-live"; noteId: string }

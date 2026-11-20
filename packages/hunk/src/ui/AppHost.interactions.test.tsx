@@ -574,11 +574,12 @@ async function pressHunkNavigationKey(
   }
 }
 
+/** Read the first actual file header while accepting the review disclosure prefix. */
 function firstCrossFileHunkNavigationHeader(frame: string) {
   return (
     frame
       .split("\n")
-      .map((line) => line.trim())
+      .map((line) => line.trim().replace(/^[▸▾] /, ""))
       .find((line) => line.startsWith("long-file.txt") || line.startsWith("short-file.ts")) ?? ""
   );
 }

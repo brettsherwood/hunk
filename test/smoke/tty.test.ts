@@ -176,7 +176,7 @@ function createLongWrapFixtureFiles() {
   return { dir, before, after };
 }
 
-type TtyInteraction = "quit" | "wrap" | "wrap-cycle" | "page";
+type TtyInteraction = "quit" | "wrap" | "wrap-cycle" | "page" | "viewed";
 
 type TtySmokeProcess = ReturnType<typeof spawnTtySmokeProcess>;
 
@@ -423,8 +423,38 @@ async function driveTtySmoke(options: {
       );
     }
 
+    if (options.interaction === "viewed") {
+      let offset = raw.length;
+      await writeTtyInput(proc, "V");
+      raw = await waitForTranscriptUpdate(
+        proc,
+        options.transcript,
+        offset,
+        "file marked viewed",
+        (output) => output.includes("[x] Viewed"),
+      );
+      offset = raw.length;
+      await writeTtyInput(proc, "o");
+      raw = await waitForTranscriptUpdate(
+        proc,
+        options.transcript,
+        offset,
+        "viewed file reopened",
+        options.initialPredicate,
+      );
+      offset = raw.length;
+      await writeTtyInput(proc, "V");
+      await waitForTranscriptUpdate(
+        proc,
+        options.transcript,
+        offset,
+        "viewed mark cleared",
+        (output) => output.includes("[ ] Viewed"),
+      );
+    }
+
     await writeTtyInput(proc, "q");
-    if (!options.pager && options.interaction !== "quit") {
+    if (!options.pager && options.interaction !== "quit" && options.interaction !== "viewed") {
       const outcome = await waitUntil("TTY exit or save-preferences prompt", async () => {
         if (proc.exitCode !== null) {
           return "exited" as const;
@@ -446,7 +476,11 @@ async function driveTtySmoke(options: {
   } catch (error) {
     proc.kill();
     await proc.exited.catch(() => undefined);
-    throw error;
+    const output = stripTerminalControl(await readTranscript(options.transcript));
+    throw new Error(
+      `${error instanceof Error ? error.message : String(error)} Last terminal output: ${output.slice(-2_000)}`,
+      { cause: error },
+    );
   }
 }
 
@@ -566,6 +600,18 @@ describe("TTY render smoke", () => {
     if (artifactDir) {
       mkdirSync(artifactDir, { recursive: true });
       writeFileSync(join(artifactDir, "smart-tty.txt"), output);
+    }
+  });
+
+  ttyTest("viewed files can be marked, reopened, and unmarked in a real terminal", async () => {
+    const output = await runTtySmoke({ mode: "smart", interaction: "viewed" });
+    expect(output).toContain("[x] Viewed");
+    expect(output).toContain("[ ] Viewed");
+    expect(output).toContain("export const answer = 42;");
+    const artifactDir = process.env.HUNK_TEST_ARTIFACT_DIR;
+    if (artifactDir) {
+      mkdirSync(artifactDir, { recursive: true });
+      writeFileSync(join(artifactDir, "viewed-tty.txt"), output);
     }
   });
 

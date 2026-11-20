@@ -44,6 +44,7 @@ import { reviewHunkIndexForLine } from "../../core/review/geometry";
 import type { ReviewSelectionScope } from "../../core/review/navigation";
 import {
   reviewFileKeysWithRetiredContent,
+  isReviewFileViewed,
   selectActiveStoredReviewNote,
   selectExpandedGapIdsByFileKey,
   selectNavigableStoredReviewNotes,
@@ -173,6 +174,12 @@ export interface LineCursorRevealRequest {
   placement: LineRevealPlacement;
   /** Explicit measured row used when the active vertical stop is a note rather than a line. */
   target?: { fileId: string; stableKey: string };
+  /** Capture navigation before React commits so a later action can supersede this reveal. */
+  origin?: {
+    fileTopToken: number;
+    hunkToken: number;
+    fileDisclosureRequestId?: number;
+  };
 }
 
 /**
@@ -186,6 +193,32 @@ export type RevealedLineResult = "line" | "hunk" | "none";
 export interface ReviewSelectionOptions {
   alignFileHeaderTop?: boolean;
   scrollToNote?: boolean;
+}
+
+/** Let semantic reveal requests open the terminal's local file presentation. */
+export interface TerminalFilePresentation {
+  isCollapsed(fileId: string): boolean;
+  expandFile(fileId: string): void;
+  getDisclosureRequestId?(): number;
+}
+
+export type TerminalFilePresentationRef = { current: TerminalFilePresentation | null };
+
+/** Retain an exact line request while expanding a file remounts its measured rows. */
+interface PendingFileLineReveal {
+  fileKey: string;
+  contentIdentity: string;
+  side: "old" | "new";
+  line: number;
+  previousCursors: readonly LineCursor[];
+  hunkRevealToken: number;
+  fileTopRevealToken: number;
+  filter: string;
+}
+
+interface OpeningFilePresentation {
+  contentIdentity: string;
+  previousCursors: readonly LineCursor[];
 }
 
 /**
@@ -217,6 +250,10 @@ export interface TerminalReview {
   stateRevision: number;
   expandedGapsByFileId: Record<string, ReadonlySet<string>>;
   filter: string;
+  viewedFileIds: ReadonlySet<string>;
+  isFileViewed: (fileId: string) => boolean;
+  setFileViewed: (fileId: string, viewed: boolean) => void;
+  toggleFileViewed: () => void;
   draftNote: DraftReviewNote | null;
   liveCommentCount: number;
   liveCommentSummaries: SessionLiveCommentSummary[];
@@ -319,6 +356,7 @@ export function useTerminalReview({
   noteGeometry,
   sourceLabel = "",
   stmlEnabled = false,
+  filePresentation,
 }: {
   files: DiffFile[];
   /** Note-layer visibility the launch configuration resolved for this review. */
@@ -341,6 +379,7 @@ export function useTerminalReview({
   sourceLabel?: string;
   /** Allow STML bodies for live comments in this explicitly opted-in session. */
   stmlEnabled?: boolean;
+  filePresentation?: TerminalFilePresentationRef;
   /**
    * Mutable ref the app keeps pointed at the current layout and pane width.
    * A ref (not a value) because App computes geometry after this hook runs;
@@ -360,6 +399,10 @@ export function useTerminalReview({
   const lineCursorBeforeExpandRef = useRef(new Map<string, LineCursor>());
 
   const reconciledDocumentRef = useRef(document);
+  const pendingFileLineRevealRef = useRef<PendingFileLineReveal | null>(null);
+  const openingFilePresentationsRef = useRef(new Map<string, OpeningFilePresentation>());
+  const localFileJumpHunkTokenRef = useRef<number | null>(null);
+  const observedHunkRevealTokenRef = useRef(0);
 
   // Agent attention marks, keyed by runtime file id. A ref backs the state so daemon
   // handlers can compute counts synchronously; both always move together.
@@ -386,6 +429,25 @@ export function useTerminalReview({
     }
 
     reconciledDocumentRef.current = document;
+    const pendingLine = pendingFileLineRevealRef.current;
+    if (
+      pendingLine &&
+      !document.files.some(
+        (file) =>
+          file.key === pendingLine.fileKey && file.contentIdentity === pendingLine.contentIdentity,
+      )
+    ) {
+      pendingFileLineRevealRef.current = null;
+    }
+    for (const [fileKey, opening] of openingFilePresentationsRef.current) {
+      if (
+        !document.files.some(
+          (file) => file.key === fileKey && file.contentIdentity === opening.contentIdentity,
+        )
+      ) {
+        openingFilePresentationsRef.current.delete(fileKey);
+      }
+    }
     for (const fileKey of reviewFileKeysWithRetiredContent(previous, document)) {
       sourceLoadRequestsRef.current.delete(fileKey);
       for (const restorePointKey of lineCursorBeforeExpandRef.current.keys()) {
@@ -456,6 +518,15 @@ export function useTerminalReview({
       }),
     );
   }, [document, files]);
+  const viewedFileIds = useMemo(
+    () =>
+      new Set(
+        document.files
+          .filter((file) => isReviewFileViewed(state, file.key))
+          .map((file) => file.runtimeId),
+      ),
+    [document, state.viewedFileKeys],
+  );
 
   const liveCommentsByFileId = useMemo(
     () => groupStoredNotesByFileId(state.liveNotes, fileByKey, storedNoteToLiveComment),
@@ -560,12 +631,82 @@ export function useTerminalReview({
     return { fileId: file?.id ?? null, hunkIndex: file ? selection.hunkIndex : null };
   }, [fileByKey, store]);
 
+  /** Track opening bodies until new cursor geometry can satisfy exact line requests. */
+  const requestFileExpansion = useCallback(
+    (fileId: string) => {
+      const presentation = filePresentation?.current;
+      if (!presentation) return;
+      if (presentation.isCollapsed(fileId)) {
+        const semantic = store
+          .getSnapshot()
+          .document.files.find((file) => file.runtimeId === fileId);
+        if (semantic)
+          openingFilePresentationsRef.current.set(semantic.key, {
+            contentIdentity: semantic.contentIdentity,
+            previousCursors: lineCursorsRef.current,
+          });
+      }
+      presentation.expandFile(fileId);
+    },
+    [filePresentation, store],
+  );
+
   /** Run one semantic intent against the review store. */
   const runIntent = useCallback(
-    <T extends ReviewIntent>(intent: T, facts?: ReviewIntentFacts) =>
-      applyReviewIntent(store, intent, facts),
-    [store],
+    <T extends ReviewIntent>(intent: T, facts?: ReviewIntentFacts) => {
+      const outcome = applyReviewIntent(store, intent, facts);
+      const explicitSelection =
+        intent.type === "selection/select-file" ||
+        intent.type === "selection/move" ||
+        (intent.type === "selection/select" && intent.reveal.anchor !== "none");
+      const opensDraft =
+        intent.type === "notes/start-draft" ||
+        intent.type === "notes/start-edit" ||
+        intent.type === "notes/start-reply";
+      if (
+        explicitSelection ||
+        opensDraft ||
+        intent.type === "filter/set" ||
+        intent.type === "files/set-viewed"
+      ) {
+        pendingFileLineRevealRef.current = null;
+      }
+      const opensContent =
+        opensDraft ||
+        (intent.type === "selection/select" &&
+          (intent.reveal.anchor !== "none" || intent.activeNoteId !== undefined)) ||
+        (intent.type === "selection/move" &&
+          intent.scope !== "file" &&
+          intent.scope !== "annotated-file");
+      if (opensContent) {
+        const selection = selectNormalizedSelection(store.getSnapshot());
+        const file = selection.fileKey ? fileByKey.get(selection.fileKey) : undefined;
+        if (file) requestFileExpansion(file.id);
+      }
+      if (
+        intent.type === "selection/select-file" ||
+        (intent.type === "selection/move" &&
+          (intent.scope === "file" || intent.scope === "annotated-file"))
+      ) {
+        localFileJumpHunkTokenRef.current = store.getSnapshot().reveal.hunkToken;
+      }
+      return outcome;
+    },
+    [fileByKey, requestFileExpansion, store],
   );
+
+  // Brokered hunk reveals bypass this controller's callbacks but still open the local body.
+  useLayoutEffect(() => {
+    const token = state.reveal.hunkToken;
+    if (token === observedHunkRevealTokenRef.current) return;
+    observedHunkRevealTokenRef.current = token;
+    if (token === localFileJumpHunkTokenRef.current) return;
+    if (pendingFileLineRevealRef.current?.hunkRevealToken !== token) {
+      pendingFileLineRevealRef.current = null;
+    }
+    const file = state.selection.fileKey ? fileByKey.get(state.selection.fileKey) : undefined;
+    if (file) requestFileExpansion(file.id);
+  }, [fileByKey, requestFileExpansion, state.reveal.hunkToken, state.selection.fileKey]);
 
   /**
    * Lower one built-in command to the intent its catalog entry declares.
@@ -659,13 +800,25 @@ export function useTerminalReview({
     setLineCursor(next);
   }, []);
 
+  /** Read navigation synchronously before React applies a queued request updater. */
+  const readLineRevealOrigin = useCallback(() => {
+    const { reveal } = store.getSnapshot();
+    const fileDisclosureRequestId = filePresentation?.current?.getDisclosureRequestId?.();
+    return {
+      fileTopToken: reveal.fileTopToken,
+      hunkToken: reveal.hunkToken,
+      ...(fileDisclosureRequestId !== undefined ? { fileDisclosureRequestId } : {}),
+    };
+  }, [filePresentation, store]);
+
   /** Move the current line to a row the reviewer just asked to see, and scroll to it. */
   const revealLineCursor = useCallback(
     (cursor: LineCursor, placement: LineRevealPlacement = "nearest") => {
       const fileKey = keyByFileId.get(cursor.fileId);
       if (!fileKey) return;
+      pendingFileLineRevealRef.current = null;
+      requestFileExpansion(cursor.fileId);
       applyLineCursor(cursor);
-      setLineCursorRevealRequest((current) => ({ id: current.id + 1, placement }));
       // A source line and note card are mutually exclusive vertical stops. This viewport-preserving
       // selection follows the line while clearing any exact semantic note focus.
       runIntent({
@@ -674,9 +827,49 @@ export function useTerminalReview({
         hunkIndex: cursor.hunkIndex,
         reveal: REVIEW_VIEWPORT_ANCHOR_REVEAL,
       });
+      const origin = readLineRevealOrigin();
+      setLineCursorRevealRequest((current) => ({ id: current.id + 1, placement, origin }));
     },
-    [applyLineCursor, keyByFileId, runIntent],
+    [applyLineCursor, keyByFileId, readLineRevealOrigin, requestFileExpansion, runIntent],
   );
+
+  // The new cursor list proves the expanded body mounted; replay the original exact target.
+  useLayoutEffect(() => {
+    for (const [fileKey, opening] of openingFilePresentationsRef.current) {
+      if (lineCursors !== opening.previousCursors)
+        openingFilePresentationsRef.current.delete(fileKey);
+    }
+    const pending = pendingFileLineRevealRef.current;
+    if (!pending || lineCursors === pending.previousCursors) return;
+    const snapshot = store.getSnapshot();
+    if (
+      snapshot.reveal.fileTopToken !== pending.fileTopRevealToken ||
+      snapshot.filter !== pending.filter
+    ) {
+      pendingFileLineRevealRef.current = null;
+      return;
+    }
+    const file = document.files.find((candidate) => candidate.key === pending.fileKey);
+    if (!file || file.contentIdentity !== pending.contentIdentity) {
+      pendingFileLineRevealRef.current = null;
+      return;
+    }
+    if (filePresentation?.current?.isCollapsed(file.runtimeId)) {
+      pendingFileLineRevealRef.current = null;
+      return;
+    }
+    pendingFileLineRevealRef.current = null;
+    const cursor = findLineCursorAt(lineCursors, file.runtimeId, pending.side, pending.line);
+    if (cursor) revealLineCursor(cursor, "reveal");
+  }, [
+    document,
+    filePresentation,
+    lineCursors,
+    revealLineCursor,
+    state.filter,
+    state.reveal.fileTopToken,
+    store,
+  ]);
 
   const reconcileLineCursor = useCallback(() => {
     if (selectActiveStoredReviewNote(store.getSnapshot())) {
@@ -787,13 +980,15 @@ export function useTerminalReview({
         activeNoteId: next.noteId,
         reveal: REVIEW_VIEWPORT_ANCHOR_REVEAL,
       });
+      const origin = readLineRevealOrigin();
       setLineCursorRevealRequest((request) => ({
         id: request.id + 1,
         placement: "nearest",
         target: { fileId: next.fileId, stableKey: next.stableKey },
+        origin,
       }));
     },
-    [applyLineCursor, keyByFileId, runIntent, store],
+    [applyLineCursor, keyByFileId, readLineRevealOrigin, runIntent, store],
   );
 
   /** Select one visible semantic note as the keyboard action target without scrolling. */
@@ -875,6 +1070,27 @@ export function useTerminalReview({
    */
   const revealLine = useCallback(
     (fileId: string, side: "old" | "new", line: number): RevealedLineResult => {
+      pendingFileLineRevealRef.current = null;
+      const currentDocument = store.getSnapshot().document;
+      const semantic = currentDocument.files.find((candidate) => candidate.runtimeId === fileId);
+      const opening = semantic ? openingFilePresentationsRef.current.get(semantic.key) : undefined;
+      if (filePresentation?.current?.isCollapsed(fileId) || opening) {
+        const file = visibleFilesRef.current.find((candidate) => candidate.id === fileId);
+        const hunkIndex = file ? reviewHunkIndexForLine(file.metadata.hunks, side, line) : -1;
+        if (!semantic || hunkIndex < 0) return "none";
+        selectHunk(fileId, hunkIndex);
+        pendingFileLineRevealRef.current = {
+          fileKey: semantic.key,
+          contentIdentity: semantic.contentIdentity,
+          side,
+          line,
+          previousCursors: opening?.previousCursors ?? lineCursorsForRevealRef.current,
+          hunkRevealToken: store.getSnapshot().reveal.hunkToken,
+          fileTopRevealToken: store.getSnapshot().reveal.fileTopToken,
+          filter: store.getSnapshot().filter,
+        };
+        return "line";
+      }
       const cursor = findLineCursorAt(lineCursorsForRevealRef.current, fileId, side, line);
       if (cursor) {
         revealLineCursor(cursor, "reveal");
@@ -890,8 +1106,32 @@ export function useTerminalReview({
       selectHunk(fileId, hunkIndex);
       return "hunk";
     },
-    [revealLineCursor, selectHunk],
+    [filePresentation, revealLineCursor, selectHunk, store],
   );
+
+  /** Set one file's viewed marker without changing selection, notes, or presentation. */
+  const setFileViewed = useCallback(
+    (fileId: string, viewed: boolean) => {
+      const fileKey = keyByFileId.get(fileId);
+      if (fileKey) runIntent({ type: "files/set-viewed", fileKey, viewed });
+    },
+    [keyByFileId, runIntent],
+  );
+
+  /** Read one marker synchronously between terminal events in the same input burst. */
+  const isFileViewed = useCallback(
+    (fileId: string) => {
+      const fileKey = keyByFileId.get(fileId);
+      return fileKey !== undefined && isReviewFileViewed(store.getSnapshot(), fileKey);
+    },
+    [keyByFileId, store],
+  );
+
+  /** Toggle viewed through the semantic effect declared by the command catalog. */
+  const toggleFileViewed = useCallback(() => {
+    const intent = lowerCommand("hunk.review.toggleFileViewed");
+    if (intent) runIntent(intent);
+  }, [lowerCommand, runIntent]);
 
   /** Set the shared file filter. */
   const setFilter = useCallback(
@@ -1725,6 +1965,10 @@ export function useTerminalReview({
     draftNote,
     expandedGapsByFileId,
     filter,
+    viewedFileIds,
+    isFileViewed,
+    setFileViewed,
+    toggleFileViewed,
     // Counted from the store, so notes on a file a reload retired still count as tracked.
     liveCommentCount: state.liveNotes.length,
     liveCommentSummaries,

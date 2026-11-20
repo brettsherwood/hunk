@@ -1,5 +1,11 @@
 import type { DiffFile } from "../../../core/changeset/model";
-import { fileHeaderStats, fitFileHeaderLabel } from "../../lib/fileHeader";
+import { MouseButton, type MouseEvent as TuiMouseEvent } from "@opentui/core";
+import {
+  fileHeaderReviewControls,
+  fileHeaderStats,
+  fitFileHeaderLabel,
+  type FileHeaderReviewPresentation,
+} from "../../lib/fileHeader";
 import type { AppTheme } from "../../themes";
 
 interface DiffFileHeaderRowProps {
@@ -8,6 +14,11 @@ interface DiffFileHeaderRowProps {
   headerStatsWidth: number;
   theme: AppTheme;
   onSelect?: () => void;
+  reviewPresentation?: FileHeaderReviewPresentation;
+  canCollapse?: boolean;
+  onToggleViewed?: () => void;
+  onToggleCollapsed?: () => void;
+  onPointerActionStart?: () => void;
 }
 
 /** Render one file header row in the review stream or sticky overlay. */
@@ -17,9 +28,30 @@ export function DiffFileHeaderRow({
   headerStatsWidth,
   theme,
   onSelect,
+  reviewPresentation,
+  canCollapse = true,
+  onToggleViewed,
+  onToggleCollapsed,
+  onPointerActionStart,
 }: DiffFileHeaderRowProps) {
   const { additionsText, deletionsText } = fileHeaderStats(file);
-  const { filename, stateLabel } = fitFileHeaderLabel(file, headerLabelWidth);
+  const controls = fileHeaderReviewControls(reviewPresentation);
+  const { filename, stateLabel } = fitFileHeaderLabel(
+    file,
+    Math.max(0, headerLabelWidth - controls.width),
+  );
+
+  /** Give control clicks ownership before the surrounding pane can acquire a text drag. */
+  const beginControl = (event: TuiMouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.button === MouseButton.LEFT) onPointerActionStart?.();
+  };
+  const activateControl = (event: TuiMouseEvent, action?: () => void) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.button === MouseButton.LEFT) action?.();
+  };
 
   return (
     <box
@@ -33,21 +65,50 @@ export function DiffFileHeaderRow({
         paddingRight: 1,
         backgroundColor: theme.panel,
       }}
-      onMouseUp={onSelect}
+      onMouseUp={(event) => {
+        if (event.button === MouseButton.LEFT) onSelect?.();
+      }}
     >
       {/* Clicking the file header jumps the main stream selection without collapsing to a single-file view. */}
       <box style={{ flexDirection: "row" }}>
+        {reviewPresentation ? (
+          <box
+            style={{ height: 1, width: 2 }}
+            onMouseDown={beginControl}
+            onMouseUp={(event) =>
+              activateControl(event, canCollapse ? onToggleCollapsed : undefined)
+            }
+          >
+            <text fg={canCollapse ? theme.muted : theme.border}>{controls.disclosure}</text>
+          </box>
+        ) : null}
         <text fg={theme.text}>{filename}</text>
         {stateLabel && <text fg={theme.muted}>{stateLabel}</text>}
       </box>
       <box
         style={{
-          width: headerStatsWidth,
+          width: headerStatsWidth + (reviewPresentation ? controls.viewed.length : 0),
           height: 1,
           flexDirection: "row",
           justifyContent: "flex-end",
         }}
       >
+        {reviewPresentation ? (
+          <box
+            style={{ height: 1, width: controls.viewed.length }}
+            onMouseDown={beginControl}
+            onMouseUp={(event) =>
+              activateControl(
+                event,
+                canCollapse || reviewPresentation.viewed ? onToggleViewed : undefined,
+              )
+            }
+          >
+            <text fg={reviewPresentation.viewed ? theme.accent : theme.muted}>
+              {controls.viewed}
+            </text>
+          </box>
+        ) : null}
         <text fg={theme.badgeAdded}>{additionsText}</text>
         <text fg={theme.muted}> </text>
         <text fg={theme.badgeRemoved}>{deletionsText}</text>

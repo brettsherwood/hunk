@@ -236,7 +236,7 @@ describe("PTY file views", () => {
       await session.waitForText(/before\.md/, { timeout: 20_000 });
       const menu = await harness.clickAndWaitForText(
         session,
-        /View/,
+        /\bView\b/,
         /File presentation: Raw diff/,
       );
       expect(menu).not.toContain("File presentation: Rendered Markdown");
@@ -396,7 +396,7 @@ describe("PTY file views", () => {
 
     try {
       await session.waitForText(/before\.md/, { timeout: 20_000 });
-      await session.click(/View/);
+      await session.click(/\bView\b/);
       const menu = await session.waitForText(/File presentation: Rendered Markdown/, {
         timeout: 20_000,
       });
@@ -407,7 +407,7 @@ describe("PTY file views", () => {
       // Verify close before F8 so the two inputs cannot become an Alt-modified function key.
       await harness.waitForSnapshot(session, (text) => !text.includes("File presentation:"));
       await harness.pressAndWaitForText(session, "f8", /• new item/);
-      await session.click(/View/);
+      await session.click(/\bView\b/);
       const toggled = await session.waitForText(/\[x\] File presentation: Rendered Markdown/, {
         timeout: 20_000,
       });
@@ -477,11 +477,11 @@ describe("PTY file views", () => {
           timeout: 20_000,
         });
         await harness.ensureKeyboardIsLive(session);
-        await harness.clickAndWaitForText(session, /View/, demo.view, { timeout: 20_000 });
+        await harness.clickAndWaitForText(session, /\bView\b/, demo.view, { timeout: 20_000 });
         await session.press("escape");
         await harness.pressAndWaitForText(session, "f8", demo.first, { timeout: 20_000 });
         await harness.pressAndWaitForText(session, "]", demo.second, { timeout: 20_000 });
-        await harness.clickAndWaitForText(session, /View/, /File presentation: Raw diff/, {
+        await harness.clickAndWaitForText(session, /\bView\b/, /File presentation: Raw diff/, {
           timeout: 20_000,
         });
         await harness.clickAndWaitForText(session, /File presentation: Raw diff/, demo.raw, {
@@ -873,7 +873,7 @@ describe("PTY file views", () => {
       expect(preview).not.toContain("old item");
       const menu = await harness.clickAndWaitForText(
         session,
-        /View/,
+        /\bView\b/,
         /\[x\] File presentation: Rendered Markdown/,
       );
       expect(menu).toContain("File presentation: Raw diff");
@@ -912,7 +912,7 @@ describe("PTY file views", () => {
       expect(raw).not.toContain("• new item");
       await harness.clickAndWaitForText(
         session,
-        /View/,
+        /\bView\b/,
         /\[x\] File presentation: Rendered Markdown/,
       );
       await session.press("escape");

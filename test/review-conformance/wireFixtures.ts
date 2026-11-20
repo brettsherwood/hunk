@@ -18,6 +18,40 @@ const SOURCE_IDENTITY = "source:0123456789abcdef";
 
 export const REVIEW_WIRE_FIXTURES: readonly ReviewWireFixture[] = [
   {
+    id: "mark-file-viewed",
+    findings: ["B12"],
+    description: "Viewed markers use stable semantic file keys and an explicit desired state.",
+    action: { type: "files/set-viewed", fileKey: FILE_KEY, viewed: true },
+    expected: {
+      accepted: true,
+      intent: { type: "files/set-viewed", fileKey: FILE_KEY, viewed: true },
+    },
+  },
+  {
+    id: "unmark-file-viewed",
+    findings: ["B12"],
+    description: "Unmarking viewed carries the same idempotent semantic intent.",
+    action: { type: "files/set-viewed", fileKey: FILE_KEY, viewed: false },
+    expected: {
+      accepted: true,
+      intent: { type: "files/set-viewed", fileKey: FILE_KEY, viewed: false },
+    },
+  },
+  {
+    id: "viewed-requires-boolean",
+    findings: ["B12"],
+    description: "A viewed string cannot become a marker through truthiness.",
+    action: { type: "files/set-viewed", fileKey: FILE_KEY, viewed: "true" },
+    expected: { accepted: false },
+  },
+  {
+    id: "viewed-rejects-local-collapse",
+    findings: ["B12"],
+    description: "Local collapsed presentation state does not travel with viewed semantics.",
+    action: { type: "files/set-viewed", fileKey: FILE_KEY, viewed: true, collapsed: true },
+    expected: { accepted: false },
+  },
+  {
     id: "select-hunk",
     findings: ["B12"],
     description: "Selecting one hunk, with the reveal the caller wants stated explicitly.",

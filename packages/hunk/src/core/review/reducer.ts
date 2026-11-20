@@ -11,6 +11,8 @@ import { reviewLineCoveredByHunks, reviewRangeTargetCoverageIssue } from "./geom
 import { clamp } from "./navigation";
 import {
   isReviewNoteWithinClearScope,
+  isReviewFileViewed,
+  reconcileViewedReviewFileKeys,
   reviewFileKeysWithRetiredContent,
   selectReviewFileByKey,
 } from "./selectors";
@@ -145,6 +147,11 @@ export function reduceReviewState(state: ReviewState, action: ReviewAction): Rev
       return {
         ...state,
         document: action.document,
+        viewedFileKeys: reconcileViewedReviewFileKeys(
+          state.viewedFileKeys,
+          state.document,
+          action.document,
+        ),
         draftNote,
         expandedGaps,
         sourceStatusByFileKey,
@@ -179,6 +186,20 @@ export function reduceReviewState(state: ReviewState, action: ReviewAction): Rev
     }
     case "filter/set":
       return action.filter === state.filter ? state : { ...state, filter: action.filter };
+    case "files/set-viewed": {
+      if (
+        !selectReviewFileByKey(state, action.fileKey) ||
+        isReviewFileViewed(state, action.fileKey) === action.viewed
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        viewedFileKeys: action.viewed
+          ? [...state.viewedFileKeys, action.fileKey]
+          : state.viewedFileKeys.filter((key) => key !== action.fileKey),
+      };
+    }
     case "notes/set-visibility": {
       if (action.visible === state.showAgentNotes) {
         return state;

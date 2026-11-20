@@ -37,6 +37,16 @@ function envelope(action: unknown, overrides: Record<string, unknown> = {}) {
 }
 
 describe("review action vocabulary", () => {
+  test("rejects viewed markers with absent or malformed semantic fields", () => {
+    for (const action of [
+      { type: "files/set-viewed", fileKey: FILE_KEY },
+      { type: "files/set-viewed", viewed: true },
+      { type: "files/set-viewed", fileKey: "", viewed: true },
+      { type: "files/set-viewed", fileKey: FILE_KEY, viewed: 1 },
+      { type: "files/set-viewed", fileKey: FILE_KEY, viewed: true, collapsed: true },
+    ])
+      expect(parseHunkReviewAction(action)).toEqual({ ok: false, reason: "invalid" });
+  });
   // Intent: B12 — the wire cannot forget an intent, because it does not list them.
   test("is the intent vocabulary", () => {
     expect([...HUNK_REVIEW_ACTION_TYPES]).toEqual([...REVIEW_INTENT_TYPES]);
@@ -64,6 +74,7 @@ describe("review action round trip", () => {
     { type: "selection/select-file", fileKey: FILE_KEY },
     { type: "selection/anchor", fileKey: FILE_KEY, hunkIndex: 0 },
     { type: "filter/set", filter: "src/ui" },
+    { type: "files/set-viewed", fileKey: FILE_KEY, viewed: true },
     { type: "notes/set-visibility", visible: true },
     { type: "notes/start-draft", fileKey: FILE_KEY, hunkIndex: 1 },
     { type: "notes/start-edit", noteId: "user:1" },

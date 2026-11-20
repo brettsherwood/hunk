@@ -5,6 +5,18 @@ import { fitText, measureTextWidth } from "./text";
 /** The explicit overflow marker used for file paths in review headers. */
 export const FILE_HEADER_OVERFLOW_MARKER = "...";
 
+export interface FileHeaderReviewPresentation {
+  viewed: boolean;
+  collapsed: boolean;
+}
+
+/** Reserve the same review-control columns for painting and clipboard selection. */
+export function fileHeaderReviewControls(presentation?: FileHeaderReviewPresentation) {
+  const disclosure = presentation ? `${presentation.collapsed ? "▸" : "▾"} ` : "";
+  const viewed = presentation ? `[${presentation.viewed ? "x" : " "}] Viewed ` : "";
+  return { disclosure, viewed, width: measureTextWidth(disclosure + viewed) };
+}
+
 /** Build the styled text fragments and measured width for one file's line counts. */
 export function fileHeaderStats(file: Pick<DiffFile, "stats" | "statsTruncated">) {
   const additionsText = `+${file.stats.additions}${file.statsTruncated ? "+" : ""}`;

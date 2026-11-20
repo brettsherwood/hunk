@@ -117,6 +117,8 @@ export interface BuildAppCommandsOptions {
   canDeleteActiveNote?: boolean;
   canEditActiveNote?: boolean;
   canReplyToActiveNote?: boolean;
+  canToggleFileViewed?: boolean;
+  canToggleFileCollapsed?: boolean;
   canRefreshCurrentInput: boolean;
   alignCurrentLine: (alignment: "top" | "center" | "bottom") => void;
   applyFilePresentationToAllMatching: () => void;
@@ -144,6 +146,8 @@ export interface BuildAppCommandsOptions {
   clearSelection?: () => void;
   startUserNote: () => void;
   toggleAgentNotes: () => void;
+  toggleFileViewed?: () => void;
+  toggleFileCollapsed?: () => void;
   toggleCopyDecorations: () => void;
   toggleFocusArea: () => void;
   toggleGapForSelectedHunk: () => void;
@@ -195,6 +199,14 @@ function builtinCommandHandlers(
     "hunk.app.toggleFocusArea": { run: () => options.toggleFocusArea() },
     "hunk.review.focusFilter": { run: () => options.focusFilter() },
     "hunk.review.startVisualSelection": { run: () => options.startVisualSelection?.() },
+    "hunk.review.toggleFileViewed": {
+      isEnabled: () => options.canToggleFileViewed ?? Boolean(options.toggleFileViewed),
+      run: () => options.toggleFileViewed?.(),
+    },
+    "hunk.view.toggleFileCollapsed": {
+      isEnabled: () => options.canToggleFileCollapsed ?? Boolean(options.toggleFileCollapsed),
+      run: () => options.toggleFileCollapsed?.(),
+    },
     "hunk.review.copySelection": {
       isEnabled: () => options.hasVisualSelection?.() ?? false,
       run: () => options.copySelection?.(),
@@ -374,6 +386,8 @@ const NOOP_COMMAND_OPTIONS: BuildAppCommandsOptions = (() => {
     clearSelection: noop,
     startUserNote: noop,
     toggleAgentNotes: noop,
+    toggleFileViewed: noop,
+    toggleFileCollapsed: noop,
     toggleCopyDecorations: noop,
     toggleFocusArea: noop,
     toggleGapForSelectedHunk: noop,

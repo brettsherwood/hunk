@@ -41,6 +41,8 @@ export interface BuildAppMenusOptions {
   cursorLine: CursorLine;
   layoutMode: LayoutMode;
   filesPaneVisible: boolean;
+  selectedFileViewed?: boolean;
+  selectedFileCollapsed?: boolean;
   showAgentNotes: boolean;
   showHelp: boolean;
   showHunkHeaders: boolean;
@@ -136,6 +138,8 @@ export function buildAppMenus({
   cursorLine,
   layoutMode,
   filesPaneVisible,
+  selectedFileViewed = false,
+  selectedFileCollapsed = false,
   showAgentNotes,
   showHelp,
   showHunkHeaders,
@@ -240,6 +244,14 @@ export function buildAppMenus({
         },
       ])
     : [];
+  const fileReviewEntries = toMenuEntries(commands, [
+    { commandId: "hunk.review.toggleFileViewed", label: "Viewed", checked: selectedFileViewed },
+    {
+      commandId: "hunk.view.toggleFileCollapsed",
+      label: "File collapsed",
+      checked: selectedFileCollapsed,
+    },
+  ]);
 
   return {
     file: toMenuEntries(commands, specs.file),
@@ -247,6 +259,9 @@ export function buildAppMenus({
       ...toMenuEntries(commands, specs.view),
       ...fileViewEntries,
       ...(applyAllEntries.length > 0 ? [{ kind: "separator" as const }, ...applyAllEntries] : []),
+      ...(fileReviewEntries.length > 0
+        ? [{ kind: "separator" as const }, ...fileReviewEntries]
+        : []),
     ],
     navigate: toMenuEntries(commands, specs.navigate),
     agent: toMenuEntries(commands, specs.agent),

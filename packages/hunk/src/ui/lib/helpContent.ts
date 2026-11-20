@@ -100,6 +100,7 @@ const HELP_SECTIONS: readonly HelpSectionSpec[] = [
       },
       { commandIds: ["hunk.view.toggleAgentNotes"], description: "toggle AI notes" },
       { commandIds: ["hunk.review.toggleHunkGap"], description: "toggle unchanged context" },
+      { commandIds: ["hunk.view.toggleFileCollapsed"], description: "collapse / expand file" },
       {
         commandIds: [
           "hunk.view.toggleLineNumbers",
@@ -116,6 +117,7 @@ const HELP_SECTIONS: readonly HelpSectionSpec[] = [
     title: "Review",
     entries: [
       { commandIds: ["hunk.review.focusFilter"], description: "focus file filter" },
+      { commandIds: ["hunk.review.toggleFileViewed"], description: "mark / unmark file viewed" },
       { commandIds: ["hunk.review.startNote"], description: "create review note" },
       {
         commandIds: [

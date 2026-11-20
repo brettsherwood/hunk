@@ -398,7 +398,7 @@ describe("PTY layout", () => {
       });
       const snapshot = await harness.waitForSnapshot(
         session,
-        (text) => text.includes("packages/visual-studio-cod... +1 -1"),
+        (text) => /▾ packages\/[^\r\n]*\.\.\.\s+\[ \] Viewed \+1 -1/.test(text),
         5_000,
       );
 

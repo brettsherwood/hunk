@@ -104,6 +104,8 @@ export type ReviewIntent =
   | { type: "selection/anchor"; fileKey: string; hunkIndex: number }
   /** Replace the review's file filter, which decides the visible stream. */
   | { type: "filter/set"; filter: string }
+  /** Record whether the reviewer has viewed one file's current content. */
+  | { type: "files/set-viewed"; fileKey: string; viewed: boolean }
   /** Set whether agent notes are shown; reviewer-authored notes stay visible either way. */
   | { type: "notes/set-visibility"; visible: boolean }
   /** Open a draft at one hunk, defaulting to the line a whole-hunk note hangs from. */
@@ -149,6 +151,7 @@ export const REVIEW_INTENT_TYPES = [
   "selection/select-file",
   "selection/anchor",
   "filter/set",
+  "files/set-viewed",
   "notes/set-visibility",
   "notes/start-draft",
   "notes/start-edit",
@@ -253,6 +256,7 @@ export interface ReviewIntentOutcomeByType {
   "selection/select-file": ReviewSelectionChangedOutcome;
   "selection/anchor": undefined;
   "filter/set": undefined;
+  "files/set-viewed": undefined;
   "notes/set-visibility": undefined;
   "notes/start-draft": ReviewDraftStartedOutcome;
   "notes/start-edit": ReviewDraftStartedOutcome;
@@ -900,6 +904,10 @@ export function planReviewIntent(
     }
     case "filter/set":
       return { actions: [{ type: "filter/set", filter: intent.filter }] };
+    case "files/set-viewed": {
+      const file = requireReviewFile(state, intent.fileKey);
+      return { actions: [{ type: "files/set-viewed", fileKey: file.key, viewed: intent.viewed }] };
+    }
     case "notes/set-visibility":
       return { actions: [{ type: "notes/set-visibility", visible: intent.visible }] };
     case "notes/start-draft":

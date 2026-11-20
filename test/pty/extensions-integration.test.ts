@@ -743,7 +743,7 @@ describe("PTY extensions", () => {
       );
       expect(closed).toContain("alpha.ts");
 
-      const menu = await harness.clickAndWaitForText(session, /View/, /Files pane/, {
+      const menu = await harness.clickAndWaitForText(session, /\bView\b/, /Files pane/, {
         timeout: 20_000,
       });
       expect(menu).toContain("[ ] Files pane");

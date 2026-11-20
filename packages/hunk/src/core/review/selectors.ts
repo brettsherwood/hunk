@@ -34,6 +34,26 @@ export function selectReviewFileByKey(
   return fileKey === null ? undefined : state.document.files.find((file) => file.key === fileKey);
 }
 
+/** Return whether the reviewer marked one file's current content viewed. */
+export function isReviewFileViewed(state: Pick<ReviewState, "viewedFileKeys">, fileKey: string) {
+  return state.viewedFileKeys.includes(fileKey);
+}
+
+/** Retain viewed markers only while their stable file address still names identical content. */
+export function reconcileViewedReviewFileKeys(
+  viewedFileKeys: readonly string[],
+  previous: ReviewDocumentV1,
+  next: ReviewDocumentV1,
+): string[] {
+  const previousByKey = new Map(previous.files.map((file) => [file.key, file] as const));
+  const nextByKey = new Map(next.files.map((file) => [file.key, file] as const));
+  return viewedFileKeys.filter((key) => {
+    const previousFile = previousByKey.get(key);
+    const nextFile = nextByKey.get(key);
+    return previousFile !== undefined && nextFile?.contentIdentity === previousFile.contentIdentity;
+  });
+}
+
 /** Resolve stored note ownership against the hunk geometry that exists now. */
 export function reviewNoteCurrentOwnerHunkIndex(note: ReviewNoteV1, file: ReviewFileV1) {
   const stored = reviewNoteOwnerHunkIndex(note);

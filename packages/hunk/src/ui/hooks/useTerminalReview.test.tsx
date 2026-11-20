@@ -19,6 +19,7 @@ import {
   useTerminalReview,
   type AgentNoteGeometrySnapshot,
   type TerminalReview,
+  type TerminalFilePresentationRef,
 } from "./useTerminalReview";
 
 /** Build a DiffFile with real parsed hunks using the controller's preferred defaults. */
@@ -165,9 +166,11 @@ function TerminalReviewHarness({
   publishLineCursors = true,
   reviewVerticalStops,
   stmlEnabled,
+  filePresentation,
   onController,
   onFirstController,
   onSetFiles,
+  onSetLineCursors,
 }: {
   initialFiles: DiffFile[];
   noteGeometry?: Parameters<typeof useTerminalReview>[0]["noteGeometry"];
@@ -175,10 +178,12 @@ function TerminalReviewHarness({
   publishLineCursors?: boolean;
   reviewVerticalStops?: ReviewVerticalStop[];
   stmlEnabled?: boolean;
+  filePresentation?: TerminalFilePresentationRef;
   onController: (controller: TerminalReview) => void;
   /** Receive the first render's controller, before any cursors were published. */
   onFirstController?: (controller: TerminalReview) => void;
   onSetFiles?: (setFiles: (nextFiles: DiffFile[]) => void) => void;
+  onSetLineCursors?: (setCursors: (next: LineCursor[]) => void) => void;
 }) {
   const [files, setFiles] = useState(initialFiles);
   const [lineCursors, setLineCursors] = useState<LineCursor[]>(() =>
@@ -194,6 +199,7 @@ function TerminalReviewHarness({
     reviewVerticalStops: reviewVerticalStops ?? lineOnlyVerticalStops,
     noteGeometry,
     stmlEnabled,
+    filePresentation,
   });
   // Capture during render, as a memoized consumer's closure would: the effects
   // below have not yet published measured cursors on the first pass.
@@ -238,6 +244,9 @@ function TerminalReviewHarness({
   useEffect(() => {
     onSetFiles?.(setFiles);
   }, [onSetFiles]);
+  useEffect(() => {
+    onSetLineCursors?.(setLineCursors);
+  }, [onSetLineCursors]);
 
   return null;
 }
@@ -251,6 +260,7 @@ async function renderTerminalReview(
     publishLineCursors,
     reviewVerticalStops,
     stmlEnabled,
+    filePresentation,
     onFirstController,
   }: {
     strictMode?: boolean;
@@ -258,11 +268,13 @@ async function renderTerminalReview(
     publishLineCursors?: boolean;
     reviewVerticalStops?: ReviewVerticalStop[];
     stmlEnabled?: boolean;
+    filePresentation?: TerminalFilePresentationRef;
     onFirstController?: (controller: TerminalReview) => void;
   } = {},
 ) {
   const controllerRef: { current: TerminalReview | null } = { current: null };
   const setFilesRef: { current: ((nextFiles: DiffFile[]) => void) | null } = { current: null };
+  const setLineCursorsRef: { current: ((next: LineCursor[]) => void) | null } = { current: null };
   const harness = (
     <TerminalReviewHarness
       initialFiles={initialFiles}
@@ -270,12 +282,16 @@ async function renderTerminalReview(
       publishLineCursors={publishLineCursors}
       reviewVerticalStops={reviewVerticalStops}
       stmlEnabled={stmlEnabled}
+      filePresentation={filePresentation}
       onFirstController={onFirstController}
       onController={(nextController) => {
         controllerRef.current = nextController;
       }}
       onSetFiles={(nextSetFiles) => {
         setFilesRef.current = nextSetFiles;
+      }}
+      onSetLineCursors={(next) => {
+        setLineCursorsRef.current = next;
       }}
     />
   );
@@ -284,10 +300,292 @@ async function renderTerminalReview(
     height: 4,
   });
 
-  return { controllerRef, setFilesRef, setup };
+  return { controllerRef, setFilesRef, setLineCursorsRef, setup };
+}
+
+/** Measure exact terminal cursors independently of a temporarily collapsed body. */
+function createTestFileLineCursors(files: DiffFile[]) {
+  return buildLineCursors(
+    files,
+    files.map((file) =>
+      measureDiffSectionGeometry(
+        file,
+        "unified",
+        true,
+        resolveTheme("github-dark-default", null),
+        [],
+        0,
+        true,
+        false,
+      ),
+    ),
+  );
+}
+
+/** Model synchronous collapse controls without depending on the pane's geometry implementation. */
+function createTestFilePresentation(...fileIds: string[]) {
+  const collapsed = new Set(fileIds);
+  const expanded: string[] = [];
+  const ref: TerminalFilePresentationRef = {
+    current: {
+      isCollapsed: (fileId) => collapsed.has(fileId),
+      expandFile: (fileId) => {
+        if (collapsed.delete(fileId)) expanded.push(fileId);
+      },
+    },
+  };
+  return { ref, collapsed, expanded };
 }
 
 describe("useTerminalReview", () => {
+  test("keeps viewed across identical reloads with new runtime ids and resets changed patches", async () => {
+    const file = createThreeHunkFile();
+    const { controllerRef, setFilesRef, setup } = await renderTerminalReview([file]);
+    try {
+      await flush(setup);
+      await act(async () => expectValue(controllerRef.current).setFileViewed(file.id, true));
+      await flush(setup);
+      expect(expectValue(controllerRef.current).viewedFileIds.has("alpha")).toBe(true);
+      const replacement = { ...file, id: "replacement-alpha" };
+      await act(async () => expectValue(setFilesRef.current)([replacement]));
+      await flush(setup);
+      expect([...expectValue(controllerRef.current).viewedFileIds]).toEqual(["replacement-alpha"]);
+      const changed = createSingleHunkFile();
+      expect(file.sourceFetcher).toBeUndefined();
+      expect(changed.sourceFetcher).toBeUndefined();
+      await act(async () => expectValue(setFilesRef.current)([changed]));
+      await flush(setup);
+      expect([...expectValue(controllerRef.current).viewedFileIds]).toEqual([]);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("reads viewed synchronously and preserves an active draft when marking a file", async () => {
+    const { controllerRef, setup } = await renderTerminalReview([createThreeHunkFile()]);
+    try {
+      await flush(setup);
+      await act(async () => {
+        const review = expectValue(controllerRef.current);
+        review.toggleFileViewed();
+        expect(review.isFileViewed("alpha")).toBe(true);
+        review.toggleFileViewed();
+        expect(review.isFileViewed("alpha")).toBe(false);
+        review.startUserNote();
+        review.updateDraftNote("unfinished review");
+        review.setFileViewed("alpha", true);
+      });
+      await flush(setup);
+      expect(expectValue(controllerRef.current).draftNote?.body).toBe("unfinished review");
+      expect(expectValue(controllerRef.current).isFileViewed("alpha")).toBe(true);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("preserves collapse for file jumps and anchors but opens explicit hunk reveals", async () => {
+    const presentation = createTestFilePresentation("alpha");
+    const { controllerRef, setup } = await renderTerminalReview([createThreeHunkFile()], {
+      filePresentation: presentation.ref,
+    });
+    try {
+      await flush(setup);
+      await act(async () => {
+        const review = expectValue(controllerRef.current);
+        review.selectFile("alpha");
+        review.anchorSelection("alpha", 1);
+      });
+      await flush(setup);
+      expect(presentation.collapsed.has("alpha")).toBe(true);
+      await act(async () => expectValue(controllerRef.current).selectHunk("alpha", 2));
+      await flush(setup);
+      expect(presentation.expanded).toEqual(["alpha"]);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("opens brokered hunk reveals but leaves passive anchors and incoming notes collapsed", async () => {
+    const presentation = createTestFilePresentation("alpha");
+    const { controllerRef, setup } = await renderTerminalReview([createThreeHunkFile()], {
+      filePresentation: presentation.ref,
+    });
+    try {
+      await flush(setup);
+      await act(async () => {
+        const review = expectValue(controllerRef.current);
+        review.anchorSelection("alpha", 1);
+        review.addLiveComment(
+          { filePath: "alpha.ts", hunkIndex: 1, summary: "Incoming annotation" },
+          "agent:incoming",
+          { reveal: false },
+        );
+      });
+      await flush(setup);
+      expect(presentation.collapsed.has("alpha")).toBe(true);
+      await act(async () => {
+        const store = expectValue(controllerRef.current).store;
+        const fileKey = store.getSnapshot().document.files[0]!.key;
+        store.dispatch({
+          type: "selection/select",
+          fileKey,
+          hunkIndex: 2,
+          reveal: { anchor: "hunk", scrollToNote: false },
+        });
+      });
+      await flush(setup);
+      expect(presentation.expanded).toEqual(["alpha"]);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("replays an exact deep line after expanding the file and measuring new rows", async () => {
+    const file = createThreeHunkFile();
+    const presentation = createTestFilePresentation("alpha");
+    const { controllerRef, setLineCursorsRef, setup } = await renderTerminalReview([file], {
+      publishLineCursors: false,
+      filePresentation: presentation.ref,
+    });
+    try {
+      await flush(setup);
+      await act(async () => {
+        const review = expectValue(controllerRef.current);
+        review.setFileViewed("alpha", true);
+        expect(review.revealLine("alpha", "new", 30)).toBe("line");
+      });
+      await flush(setup);
+      expect(presentation.expanded).toEqual(["alpha"]);
+      await act(async () =>
+        expectValue(setLineCursorsRef.current)(createTestFileLineCursors([file])),
+      );
+      await flush(setup);
+      expect(expectValue(controllerRef.current).lineCursor).toMatchObject({
+        fileId: "alpha",
+        hunkIndex: 2,
+        target: { side: "new", line: 30 },
+      });
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest.placement).toBe("reveal");
+      expect(expectValue(controllerRef.current).isFileViewed("alpha")).toBe(true);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("retains the exact line when search selects a collapsed hunk before revealing it", async () => {
+    const file = createThreeHunkFile();
+    const presentation = createTestFilePresentation("alpha");
+    const { controllerRef, setLineCursorsRef, setup } = await renderTerminalReview([file], {
+      publishLineCursors: false,
+      filePresentation: presentation.ref,
+    });
+    try {
+      await flush(setup);
+      await act(async () => {
+        const review = expectValue(controllerRef.current);
+        review.selectHunk("alpha", 2);
+        expect(presentation.collapsed.has("alpha")).toBe(false);
+        expect(review.revealLine("alpha", "new", 30)).toBe("line");
+      });
+      await flush(setup);
+      await act(async () =>
+        expectValue(setLineCursorsRef.current)(createTestFileLineCursors([file])),
+      );
+      await flush(setup);
+      expect(expectValue(controllerRef.current).lineCursor).toMatchObject({
+        fileId: "alpha",
+        hunkIndex: 2,
+        target: { side: "new", line: 30 },
+      });
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest.placement).toBe("reveal");
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("binds an immediate line reveal before a newer file jump in the same input burst", async () => {
+    const { controllerRef, setup } = await renderTerminalReview([createThreeHunkFile()]);
+    try {
+      await flush(setup);
+      let origin: { fileTopToken: number; hunkToken: number } | undefined;
+      await act(async () => {
+        const review = expectValue(controllerRef.current);
+        const reveal = review.store.getSnapshot().reveal;
+        origin = { fileTopToken: reveal.fileTopToken, hunkToken: reveal.hunkToken };
+        expect(review.revealLine("alpha", "new", 30)).toBe("line");
+        review.selectFile("alpha", { alignFileHeaderTop: true });
+      });
+      await flush(setup);
+      const review = expectValue(controllerRef.current);
+      expect(review.lineCursorRevealRequest.origin).toEqual(origin);
+      expect(review.store.getSnapshot().reveal.fileTopToken).toBe(
+        expectValue(origin).fileTopToken + 1,
+      );
+      expect(review.selectedHunkIndex).toBe(0);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("binds a line reveal before a later local disclosure change in the same input burst", async () => {
+    let disclosureId = 0;
+    const filePresentation: TerminalFilePresentationRef = {
+      current: {
+        isCollapsed: () => false,
+        expandFile: () => {},
+        getDisclosureRequestId: () => disclosureId,
+      },
+    };
+    const { controllerRef, setup } = await renderTerminalReview([createThreeHunkFile()], {
+      filePresentation,
+    });
+    try {
+      await flush(setup);
+      await act(async () => {
+        expect(expectValue(controllerRef.current).revealLine("alpha", "new", 30)).toBe("line");
+        disclosureId++;
+      });
+      await flush(setup);
+      expect(
+        expectValue(controllerRef.current).lineCursorRevealRequest.origin?.fileDisclosureRequestId,
+      ).toBe(0);
+      expect(filePresentation.current?.getDisclosureRequestId?.()).toBe(1);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
+  test("retires deferred exact line reveals after another navigation or changed content", async () => {
+    for (const retireBy of ["navigation", "content"] as const) {
+      const file = createThreeHunkFile();
+      const presentation = createTestFilePresentation("alpha");
+      const { controllerRef, setLineCursorsRef, setFilesRef, setup } = await renderTerminalReview(
+        [file],
+        { publishLineCursors: false, filePresentation: presentation.ref },
+      );
+      try {
+        await flush(setup);
+        await act(async () => {
+          expectValue(controllerRef.current).revealLine("alpha", "new", 30);
+          if (retireBy === "navigation") expectValue(controllerRef.current).selectFile("alpha");
+          else expectValue(setFilesRef.current)([createSingleHunkFile()]);
+        });
+        await flush(setup);
+        await act(async () =>
+          expectValue(setLineCursorsRef.current)(
+            createTestFileLineCursors([retireBy === "navigation" ? file : createSingleHunkFile()]),
+          ),
+        );
+        await flush(setup);
+        expect(expectValue(controllerRef.current).lineCursorRevealRequest.placement).toBe(
+          "nearest",
+        );
+        expect(expectValue(controllerRef.current).selectedHunkIndex).toBe(0);
+      } finally {
+        await act(async () => setup.renderer.destroy());
+      }
+    }
+  });
   test("preserves a filtered-out selection until the reviewer clears the filter", async () => {
     const { controllerRef, setup } = await renderTerminalReview([
       createDiffFile("alpha", "alpha.ts", "export const alpha = 1;\n", "export const alpha = 2;\n"),
@@ -2090,7 +2388,7 @@ describe("useTerminalReview", () => {
       });
       await flush(setup);
 
-      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toEqual({
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toMatchObject({
         id: initialRequestId + 1,
         placement: "nearest",
       });
@@ -2135,7 +2433,7 @@ describe("useTerminalReview", () => {
       await flush(setup);
 
       expect(expectValue(controllerRef.current).lineCursor).toEqual(expected);
-      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toEqual({
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toMatchObject({
         id: initialRequestId + 1,
         placement: "nearest",
       });
@@ -2331,7 +2629,7 @@ describe("useTerminalReview", () => {
       // Selection follows the revealed line so notes and hunk actions stay on the same target.
       expect(expectValue(controllerRef.current).selectedFileId).toBe("beta");
       expect(expectValue(controllerRef.current).selectedHunkIndex).toBe(2);
-      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toEqual({
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toMatchObject({
         id: before.id + 1,
         placement: "reveal",
       });
@@ -2474,7 +2772,7 @@ describe("useTerminalReview", () => {
         fileId: "alpha",
         target: { side: "new", line: 12 },
       });
-      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toEqual({
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toMatchObject({
         id: before.id + 1,
         placement: "reveal",
       });
@@ -2724,7 +3022,7 @@ describe("useTerminalReview", () => {
         target: { side: "new", line: 12 },
       });
       // The same reveal placement extensions get from ctx.navigation.revealLine.
-      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toEqual({
+      expect(expectValue(controllerRef.current).lineCursorRevealRequest).toMatchObject({
         id: before.id + 1,
         placement: "reveal",
       });

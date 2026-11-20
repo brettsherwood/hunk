@@ -99,6 +99,57 @@ function registeredCommand(
 }
 
 describe("buildAppMenus", () => {
+  test("shows separate viewed and collapsed markers for the selected file", () => {
+    const { commands, ran } = createTestCommands({
+      toggleFileViewed: () => ran.push("viewed"),
+      toggleFileCollapsed: () => ran.push("collapsed"),
+    });
+    const menus = buildAppMenus({
+      ...MENU_STATE,
+      commands,
+      selectedFileViewed: true,
+      selectedFileCollapsed: false,
+    });
+    const viewed = items(menus.view).find(
+      (item) => item.commandId === "hunk.review.toggleFileViewed",
+    )!;
+    const collapsed = items(menus.view).find(
+      (item) => item.commandId === "hunk.view.toggleFileCollapsed",
+    )!;
+    expect(viewed).toMatchObject({ label: "Viewed", hint: "V", checked: true });
+    expect(collapsed).toMatchObject({ label: "File collapsed", hint: "o", checked: false });
+    expect(items(menus.view)[0]?.commandId).toBe("hunk.view.layoutUnified");
+    expect(
+      items(menus.view)
+        .slice(-2)
+        .map((item) => item.commandId),
+    ).toEqual(["hunk.review.toggleFileViewed", "hunk.view.toggleFileCollapsed"]);
+    viewed.action();
+    collapsed.action();
+    expect(ran).toEqual(["viewed", "collapsed"]);
+  });
+  test("appends file review controls after extension presentation options", () => {
+    const { commands } = createTestCommands({
+      toggleFileViewed: () => {},
+      toggleFileCollapsed: () => {},
+    });
+    const menus = buildAppMenus({
+      ...MENU_STATE,
+      commands,
+      fileViewEntries: [
+        { kind: "item", label: "Preview", commandId: "extension.preview", action: () => {} },
+      ],
+    });
+    expect(
+      items(menus.view)
+        .slice(-3)
+        .map((item) => item.commandId),
+    ).toEqual([
+      "extension.preview",
+      "hunk.review.toggleFileViewed",
+      "hunk.view.toggleFileCollapsed",
+    ]);
+  });
   test("checks only the requested layout and exposes Smart through key 3", () => {
     const { commands } = createTestCommands();
     for (const layoutMode of ["auto", "smart", "split", "unified"] as const) {

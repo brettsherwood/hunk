@@ -131,6 +131,37 @@ describe("app command catalog", () => {
     ).toEqual({ type: "notes/set-visibility", visible: false });
   });
 
+  test("toggles viewed semantically while file disclosure stays client-local", () => {
+    const viewed = entry("hunk.review.toggleFileViewed");
+    expect(viewed).toMatchObject({
+      defaultKeys: ["V"],
+      locus: "semantic",
+      publicToExtensions: true,
+    });
+    const state = createTestReviewState();
+    expect(lowerAppCommandToReviewIntent(viewed, { count: 1, state })).toEqual({
+      type: "files/set-viewed",
+      fileKey: "alpha",
+      viewed: true,
+    });
+    expect(
+      lowerAppCommandToReviewIntent(viewed, {
+        count: 1,
+        state: { ...state, viewedFileKeys: ["alpha"] },
+      }),
+    ).toEqual({ type: "files/set-viewed", fileKey: "alpha", viewed: false });
+    expect(
+      lowerAppCommandToReviewIntent(viewed, { count: 1, state: createTestReviewState([]) }),
+    ).toBeUndefined();
+    const collapse = entry("hunk.view.toggleFileCollapsed");
+    expect(collapse).toMatchObject({
+      defaultKeys: ["o"],
+      locus: "client-local",
+      publicToExtensions: true,
+    });
+    expect(lowerAppCommandToReviewIntent(collapse, { count: 1, state })).toBeUndefined();
+  });
+
   test("lowers nothing for commands that resolve outside the review model", () => {
     const state = createTestReviewState();
 

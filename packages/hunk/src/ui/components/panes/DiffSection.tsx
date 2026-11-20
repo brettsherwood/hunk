@@ -44,6 +44,14 @@ interface DiffSectionProps {
   hunkGap: number;
   wrapLines: boolean;
   showHeader: boolean;
+  /** Keep a real first-file header extent without painting its pinned duplicate. */
+  hideHeaderContent?: boolean;
+  collapsed?: boolean;
+  viewed?: boolean;
+  canCollapse?: boolean;
+  onToggleViewed?: () => void;
+  onToggleCollapsed?: () => void;
+  onPointerActionStart?: () => void;
   separatorHeight: number;
   theme: AppTheme;
   visibleAgentNotes: VisibleAgentNote[];
@@ -86,6 +94,13 @@ function DiffSectionComponent({
   hunkGap,
   wrapLines,
   showHeader,
+  hideHeaderContent = false,
+  collapsed = false,
+  viewed,
+  canCollapse = true,
+  onToggleViewed,
+  onToggleCollapsed,
+  onPointerActionStart,
   separatorHeight,
   theme,
   visibleAgentNotes,
@@ -146,17 +161,24 @@ function DiffSectionComponent({
         </box>
       ) : null}
 
-      {showHeader ? (
+      {showHeader && hideHeaderContent ? (
+        <box style={{ width: "100%", height: 1, flexShrink: 0 }} />
+      ) : showHeader ? (
         <DiffFileHeaderRow
           file={file}
           headerLabelWidth={headerLabelWidth}
           headerStatsWidth={headerStatsWidth}
           theme={theme}
           onSelect={onSelect}
+          reviewPresentation={viewed === undefined ? undefined : { viewed, collapsed }}
+          canCollapse={canCollapse}
+          onToggleViewed={onToggleViewed}
+          onToggleCollapsed={onToggleCollapsed}
+          onPointerActionStart={onPointerActionStart}
         />
       ) : null}
 
-      {fileView ? (
+      {collapsed ? null : fileView ? (
         <FileView
           file={file}
           fileView={fileView}
@@ -250,6 +272,13 @@ export const DiffSection = memo(DiffSectionComponent, (previous, next) => {
     previous.hunkGap === next.hunkGap &&
     previous.wrapLines === next.wrapLines &&
     previous.showHeader === next.showHeader &&
+    previous.hideHeaderContent === next.hideHeaderContent &&
+    previous.collapsed === next.collapsed &&
+    previous.viewed === next.viewed &&
+    previous.canCollapse === next.canCollapse &&
+    previous.onToggleViewed === next.onToggleViewed &&
+    previous.onToggleCollapsed === next.onToggleCollapsed &&
+    previous.onPointerActionStart === next.onPointerActionStart &&
     previous.separatorHeight === next.separatorHeight &&
     previous.hoverActive === next.hoverActive &&
     previous.hoverClearSignal === next.hoverClearSignal &&

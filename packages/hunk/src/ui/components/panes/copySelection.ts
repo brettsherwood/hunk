@@ -14,7 +14,12 @@ import {
 } from "../../diff/diffSectionGeometry";
 import type { CopySelectedRowRange } from "../../lib/diffSpatial";
 import { findFileSectionAtOffset, type FileSectionLayout } from "../../lib/fileSectionLayout";
-import { fileHeaderStats, fitFileHeaderLabel } from "../../lib/fileHeader";
+import {
+  fileHeaderReviewControls,
+  fileHeaderStats,
+  fitFileHeaderLabel,
+  type FileHeaderReviewPresentation,
+} from "../../lib/fileHeader";
 import { cellRangeToCharRange, measureTextWidth, sliceTextByWidth, wrapText } from "../../lib/text";
 import type { LineCursor } from "../../lib/lineCursors";
 import {
@@ -69,6 +74,9 @@ export interface CopySelectionContext {
   layout: ResolvedLayout;
   fileLayouts?: ReadonlyMap<string, ResolvedLayout>;
   pinnedHeaderFile?: DiffFile | null;
+  viewedFileIds?: ReadonlySet<string>;
+  collapsedFileIds?: ReadonlySet<string>;
+  hiddenHeaderFileId?: string | null;
   reserveAddNoteColumn: boolean;
   sectionGeometry: DiffSectionGeometry[];
   showHunkHeaders: boolean;
@@ -364,15 +372,21 @@ function renderFileHeaderCopyText({
   headerLabelWidth,
   headerStatsWidth,
   width,
+  reviewPresentation,
 }: {
   file: DiffFile;
   headerLabelWidth: number;
   headerStatsWidth: number;
   width: number;
+  reviewPresentation?: FileHeaderReviewPresentation;
 }) {
-  const statsText = fileHeaderStats(file).text.padStart(headerStatsWidth);
-  const { filename, stateLabel } = fitFileHeaderLabel(file, headerLabelWidth);
-  const label = `${filename}${stateLabel ?? ""}`;
+  const controls = fileHeaderReviewControls(reviewPresentation);
+  const statsText = `${controls.viewed}${fileHeaderStats(file).text.padStart(headerStatsWidth)}`;
+  const { filename, stateLabel } = fitFileHeaderLabel(
+    file,
+    Math.max(0, headerLabelWidth - controls.width),
+  );
+  const label = `${controls.disclosure}${filename}${stateLabel ?? ""}`;
   // The gap and clamp are measured in cells to mirror DiffFileHeaderRow's space-between flex
   // layout, so wide-character filenames keep the stats columns aligned with the screen.
   const availableGap = Math.max(1, width - 2 - measureTextWidth(label) - statsText.length);
@@ -485,6 +499,12 @@ export function renderCopySelectionText({
         headerLabelWidth,
         headerStatsWidth,
         width,
+        reviewPresentation: context.viewedFileIds
+          ? {
+              viewed: context.viewedFileIds.has(pinnedHeaderFile.id),
+              collapsed: context.collapsedFileIds?.has(pinnedHeaderFile.id) ?? false,
+            }
+          : undefined,
       }),
       globalColumnOffset: 0,
       retainEmpty: true,
@@ -510,7 +530,8 @@ export function renderCopySelectionText({
       copyDecorations &&
       section.headerTop < section.bodyTop &&
       section.headerTop >= startRow &&
-      section.headerTop <= endRow
+      section.headerTop <= endRow &&
+      section.fileId !== context.hiddenHeaderFileId
     ) {
       const file = files[section.sectionIndex];
       if (file) {
@@ -519,6 +540,12 @@ export function renderCopySelectionText({
           headerLabelWidth,
           headerStatsWidth,
           width,
+          reviewPresentation: context.viewedFileIds
+            ? {
+                viewed: context.viewedFileIds.has(file.id),
+                collapsed: context.collapsedFileIds?.has(file.id) ?? false,
+              }
+            : undefined,
         });
         const copiedLine = clipSelectedVisualLine(
           {

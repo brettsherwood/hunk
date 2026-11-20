@@ -37,7 +37,10 @@ function keyEvent(fields: Partial<ParsedKey>): KeyEvent {
 }
 
 /** Build the built-in table over recording callbacks, plus the log it writes. */
-function createTestCommands(resolvedKeys?: ResolvedCommandKeys) {
+function createTestCommands(
+  resolvedKeys?: ResolvedCommandKeys,
+  overrides: Partial<BuildAppCommandsOptions> = {},
+) {
   const ran: string[] = [];
   const record =
     (name: string) =>
@@ -64,6 +67,8 @@ function createTestCommands(resolvedKeys?: ResolvedCommandKeys) {
     selectLayoutMode: record("selectLayoutMode"),
     startUserNote: record("startUserNote"),
     toggleAgentNotes: record("toggleAgentNotes"),
+    toggleFileViewed: record("toggleFileViewed"),
+    toggleFileCollapsed: record("toggleFileCollapsed"),
     toggleCopyDecorations: record("toggleCopyDecorations"),
     toggleFocusArea: record("toggleFocusArea"),
     toggleGapForSelectedHunk: record("toggleGapForSelectedHunk"),
@@ -75,12 +80,35 @@ function createTestCommands(resolvedKeys?: ResolvedCommandKeys) {
     toggleFilesPane: record("toggleFilesPane"),
     triggerEditSelectedFile: record("triggerEditSelectedFile"),
     triggerRefreshCurrentInput: record("triggerRefreshCurrentInput"),
+    ...overrides,
   };
 
   return { commands: buildAppCommands(options), ran };
 }
 
 describe("built-in command chords", () => {
+  test("disables viewed and disclosure actions without an addressable file", () => {
+    const { commands, ran } = createTestCommands(undefined, {
+      canToggleFileViewed: false,
+      canToggleFileCollapsed: false,
+    });
+    expect(executeAppCommand(commands, "hunk.review.toggleFileViewed")).toBe(false);
+    expect(executeAppCommand(commands, "hunk.view.toggleFileCollapsed")).toBe(false);
+    expect(ran).toEqual([]);
+  });
+  test("keeps viewed and disclosure separate from visual selection", () => {
+    const { commands, ran } = createTestCommands();
+    expect(
+      dispatchAppCommand(commands, keyEvent({ name: "v", sequence: "V", shift: true }))?.id,
+    ).toBe("hunk.review.toggleFileViewed");
+    expect(dispatchAppCommand(commands, keyEvent({ name: "o", sequence: "o" }))?.id).toBe(
+      "hunk.view.toggleFileCollapsed",
+    );
+    expect(dispatchAppCommand(commands, keyEvent({ name: "v", sequence: "v" }))?.id).toBe(
+      "hunk.review.startVisualSelection",
+    );
+    expect(ran).toEqual(["toggleFileViewed", "toggleFileCollapsed"]);
+  });
   test("every alias of the scroll shortcuts still dispatches", () => {
     const { commands, ran } = createTestCommands();
     const press = (fields: Partial<ParsedKey>) =>

@@ -39,6 +39,8 @@ Hunk navigation stays review-wide: hunk and file shortcuts move through the same
 | `m`                   | Toggle hunk metadata                             |
 | `M`                   | Toggle menu bar                                  |
 | `z`                   | Toggle unchanged context for the selected hunk   |
+| `V`                   | Mark or unmark the selected file Viewed          |
+| `o`                   | Collapse or expand the selected file             |
 | `a`                   | Toggle agent notes                               |
 | `e`                   | Open the selected file in `$EDITOR`              |
 | `Tab`                 | Move focus between the file list and file filter |
@@ -48,6 +50,13 @@ Hunk navigation stays review-wide: hunk and file shortcuts move through the same
 
 Hunk may offer to save view changes on quit. Saving writes personal preferences globally unless the repository already has a `.hunk/config.toml`.
 
+Click **Viewed** on a file header or press `V` to mark the file reviewed and collapse its diff.
+Its header and sidebar entry stay in the review. The disclosure arrow or `o` expands the file
+without clearing Viewed; unchecking Viewed also expands it. Hunk, note, and search jumps open
+their target while retaining the checkmark. Viewed survives a reload when the reviewed content
+is unchanged and resets when that content changes. These markers last for the current session.
+An active note composer stays visible until it is saved or cancelled.
+
 ## Add a human note
 
 Press `c` on the selected hunk or use a visible add-note affordance with the mouse. While editing, app shortcuts are suspended so normal text entry works. Save with the note editor's displayed action or cancel with Escape.
@@ -55,6 +64,7 @@ Press `c` on the selected hunk or use a visible add-note affordance with the mou
 ## Mouse behavior
 
 - Click a sidebar file to jump to it in the review stream.
+- Click a file header's Viewed checkbox to mark it reviewed, or its disclosure arrow to collapse or expand it.
 - Click menus and dialog actions instead of their key equivalents.
 - Use the wheel or scrollbar to move through the review; hold Shift while scrolling to move horizontally through unwrapped code.
 - Select diff text for copy where the terminal supports it.

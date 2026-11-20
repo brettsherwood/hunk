@@ -31,6 +31,7 @@ import {
   selectActiveEditableReviewNoteId,
   selectActiveRemovableReviewNote,
   selectActiveReplyableReviewNoteId,
+  isReviewFileViewed,
   selectNormalizedSelection,
   selectReviewGapForSelection,
 } from "../review/selectors";
@@ -56,6 +57,7 @@ export type VerticalCommandDirection = -1 | 1;
 export type AppCommandReviewEffect =
   | { kind: "selection/move"; scope: ReviewSelectionScope; direction: 1 | -1 }
   | { kind: "notes/toggle-visibility" }
+  | { kind: "files/toggle-viewed" }
   /** Open a draft at the current selection; the client may supply a measured line. */
   | { kind: "notes/start-draft" }
   /** Edit the active note when that same card is an editable reviewer note. */
@@ -170,6 +172,25 @@ const BUILTIN_COMMANDS = [
     defaultKeys: ["v"],
     locus: "client-local",
     publicToExtensions: true,
+  },
+  {
+    id: "hunk.review.toggleFileViewed",
+    title: "Mark file viewed",
+    category: "review",
+    defaultKeys: ["V"],
+    locus: "semantic",
+    review: { kind: "files/toggle-viewed" },
+    publicToExtensions: true,
+    closesMenu: true,
+  },
+  {
+    id: "hunk.view.toggleFileCollapsed",
+    title: "Collapse file",
+    category: "view",
+    defaultKeys: ["o"],
+    locus: "client-local",
+    publicToExtensions: true,
+    closesMenu: true,
   },
   {
     id: "hunk.review.copySelection",
@@ -692,6 +713,12 @@ export function lowerAppCommandToReviewIntent(
       };
     case "notes/toggle-visibility":
       return { type: "notes/set-visibility", visible: !state.showAgentNotes };
+    case "files/toggle-viewed": {
+      const { fileKey } = selectNormalizedSelection(state);
+      return fileKey === null
+        ? undefined
+        : { type: "files/set-viewed", fileKey, viewed: !isReviewFileViewed(state, fileKey) };
+    }
     case "notes/start-draft": {
       const { fileKey, hunkIndex } = noteLocation ?? selectNormalizedSelection(state);
       return fileKey === null
