@@ -17,12 +17,20 @@ import type { InstallSource } from "../install/installSource";
 import type { ExtensionSelectionOverride } from "./extensionSelection";
 import type { WheelScrollLines } from "./wheelScrollLines";
 
-export type LayoutMode = "auto" | "split" | "unified";
+export type LayoutMode = "auto" | "smart" | "split" | "unified";
+/** Concrete file layout after resolving a requested mode. */
+export type ResolvedLayout = "split" | "unified";
 export type LayoutModeInput = LayoutMode | "stack";
 
 /** Return whether an unknown value uses canonical or deprecated layout vocabulary. */
 export function isLayoutModeInput(value: unknown): value is LayoutModeInput {
-  return value === "auto" || value === "split" || value === "unified" || value === "stack";
+  return (
+    value === "auto" ||
+    value === "smart" ||
+    value === "split" ||
+    value === "unified" ||
+    value === "stack"
+  );
 }
 
 /** Normalize canonical and deprecated layout inputs without widening runtime state. */

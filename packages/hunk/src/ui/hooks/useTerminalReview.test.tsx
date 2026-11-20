@@ -15,7 +15,11 @@ import { buildLineCursors, type LineCursor } from "../lib/lineCursors";
 import type { ReviewVerticalStop } from "../lib/reviewVerticalStops";
 import { resolveTheme } from "../themes";
 import { createTestStoredNote } from "../../../../../test/helpers/review-store-helpers";
-import { useTerminalReview, type TerminalReview } from "./useTerminalReview";
+import {
+  useTerminalReview,
+  type AgentNoteGeometrySnapshot,
+  type TerminalReview,
+} from "./useTerminalReview";
 
 /** Build a DiffFile with real parsed hunks using the controller's preferred defaults. */
 function createDiffFile(
@@ -613,6 +617,81 @@ describe("useTerminalReview", () => {
       await act(async () => {
         setup.renderer.destroy();
       });
+    }
+  });
+
+  test("targeted markup uses hidden files' layouts for roots, batches, and replies", async () => {
+    const mixed = createDiffFile("smart-mixed", "mixed.ts", "before\n", "after\n");
+    const added = createDiffFile("smart-added", "added.ts", "", "addition\n");
+    const noteGeometry: { current: AgentNoteGeometrySnapshot | null } = {
+      current: {
+        layout: "split",
+        width: 120,
+        fileLayouts: new Map([
+          [mixed.id, "split"],
+          [added.id, "unified"],
+        ]),
+      },
+    };
+    const { controllerRef, setup } = await renderTerminalReview([mixed, added], {
+      noteGeometry,
+      stmlEnabled: true,
+    });
+    try {
+      await flush(setup);
+      await act(async () => expectValue(controllerRef.current).setFilter("mixed"));
+      await flush(setup);
+      expect(expectValue(controllerRef.current).visibleFiles.map((file) => file.id)).toEqual([
+        mixed.id,
+      ]);
+      let widths: Array<number | undefined> = [];
+      await act(async () => {
+        const controller = expectValue(controllerRef.current);
+        const root = controller.addLiveComment(
+          {
+            filePath: "added.ts",
+            side: "new",
+            line: 1,
+            summary: "Hidden root",
+            markup: "<box>root</box>",
+          },
+          "smart-hidden-root",
+        );
+        const batch = controller.addLiveCommentBatch(
+          [
+            {
+              filePath: "added.ts",
+              side: "new",
+              line: 1,
+              summary: "Hidden batch",
+              markup: "<box>batch</box>",
+            },
+            {
+              filePath: "mixed.ts",
+              side: "new",
+              line: 1,
+              summary: "Split batch",
+              markup: "<box>batch</box>",
+            },
+          ],
+          "smart-width-batch",
+        );
+        const reply = controller.addLiveComment(
+          { replyTo: root.commentId, summary: "Hidden reply", markup: "<box>reply</box>" },
+          "smart-hidden-reply",
+        );
+        widths = [
+          root.markupWidth,
+          ...batch.applied.map((result) => result.markupWidth),
+          reply.markupWidth,
+        ];
+      });
+      expect(widths[0]).toBe(112);
+      expect(widths[1]).toBe(112);
+      expect(widths[2]).toBeLessThan(70);
+      expect(widths[3]).toBe(112);
+    } finally {
+      await act(async () => setup.renderer.destroy());
     }
   });
 

@@ -22,6 +22,8 @@ import {
   projectCommentSelection,
   renderCopySelectionText,
   resolveCopySelectionSide,
+  resolveCopySelectionLayout,
+  resolveCopySelectionSideAtPoint,
   selectionInvalidationIdentity,
   type CopySelectionContext,
   type CopySelectionDrag,
@@ -279,18 +281,29 @@ function buildMultiFileTestContext({
   copyDecorations = true,
   files,
   layout = "unified",
+  fileLayouts,
   width = 120,
   wrapLines = false,
 }: {
   copyDecorations?: boolean;
   files: DiffFile[];
   layout?: "unified" | "split";
+  fileLayouts?: ReadonlyMap<string, "split" | "unified">;
   width?: number;
   wrapLines?: boolean;
 }) {
   const theme = resolveTheme("github-dark-default", null);
   const sectionGeometry = files.map((file) =>
-    measureDiffSectionGeometry(file, layout, true, theme, [], width, true, wrapLines),
+    measureDiffSectionGeometry(
+      file,
+      fileLayouts?.get(file.id) ?? layout,
+      true,
+      theme,
+      [],
+      width,
+      true,
+      wrapLines,
+    ),
   );
   const fileSectionLayouts = buildFileSectionLayouts(
     files,
@@ -304,6 +317,7 @@ function buildMultiFileTestContext({
     headerLabelWidth: 60,
     headerStatsWidth: 12,
     layout,
+    fileLayouts,
     pinnedHeaderFile: files[0] ?? null,
     reserveAddNoteColumn: false,
     sectionGeometry,
@@ -2202,5 +2216,104 @@ describe("copy selection with zero-width characters", () => {
     });
 
     expect(text).toBe("\u200bb';");
+  });
+});
+
+describe("mixed per-file layouts", () => {
+  test("acquires sides and expands words/lines in the pointed file's own columns", () => {
+    const mixed = createTestDiffFile({
+      id: "mixed-smart",
+      path: "mixed.txt",
+      before: "oldword\n",
+      after: "newword\n",
+    });
+    const added = createTestDiffFile({
+      id: "added-smart",
+      path: "added.txt",
+      before: "",
+      after: "addedword\n",
+    });
+    const { context, fileSectionLayouts, sectionGeometry } = buildMultiFileTestContext({
+      files: [mixed, added],
+      layout: "split",
+      width: 80,
+      fileLayouts: new Map([
+        [mixed.id, "split"],
+        [added.id, "unified"],
+      ]),
+    });
+    const points = sectionGeometry.map((geometry, index) => {
+      const row = geometry.plannedRows.findIndex(
+        (row) =>
+          row.kind === "diff-row" &&
+          (row.row.type === "split-line" || row.row.type === "unified-line"),
+      );
+      return {
+        kind: "review-row" as const,
+        visualRow: fileSectionLayouts[index]!.bodyTop + geometry.rowBounds[row]!.top,
+        column: 50,
+      };
+    });
+    expect(resolveCopySelectionSideAtPoint(points[0]!, context)).toBe("right");
+    expect(resolveCopySelectionSideAtPoint(points[1]!, context)).toBeUndefined();
+    expect(resolveCopySelectionLayout(points[1]!, context)).toBe("unified");
+    expect(expandSelectionPoint(points[1]!, 3, context)).toEqual({ startCol: 0, endCol: 79 });
+    const addedRow = sectionGeometry[1]!.plannedRows.find(
+      (row) => row.kind === "diff-row" && row.row.type === "unified-line",
+    )!;
+    const codeLayout = planCodeRowLayout(addedRow, {
+      width: 80,
+      lineNumberDigits: 1,
+      showLineNumbers: true,
+      wrapLines: false,
+    });
+    expect(codeLayout?.kind).toBe("unified");
+    if (codeLayout?.kind !== "unified") throw new Error("Expected unified code layout");
+    const start = codeLayout.cell.prefixWidth + codeLayout.cell.gutterWidth;
+    expect(expandSelectionPoint({ ...points[1]!, column: start + 2 }, 2, context)).toEqual({
+      startCol: start,
+      endCol: start + "addedword".length - 1,
+    });
+  });
+  test("a right-pane drag copies the unified endpoint at its actual terminal origin", () => {
+    const mixed = createTestDiffFile({
+      id: "mixed-copy",
+      path: "mixed.txt",
+      before: "oldword\n",
+      after: "newword\n",
+    });
+    const added = createTestDiffFile({
+      id: "added-copy",
+      path: "added.txt",
+      before: "",
+      after: "addedword\n",
+    });
+    const { context, fileSectionLayouts, sectionGeometry } = buildMultiFileTestContext({
+      files: [mixed, added],
+      layout: "split",
+      width: 80,
+      fileLayouts: new Map([
+        [mixed.id, "split"],
+        [added.id, "unified"],
+      ]),
+    });
+    const codeRowTop = (index: number) => {
+      const geometry = sectionGeometry[index]!;
+      const rowIndex = geometry.plannedRows.findIndex(
+        (row) =>
+          row.kind === "diff-row" &&
+          (row.row.type === "split-line" || row.row.type === "unified-line"),
+      );
+      return fileSectionLayouts[index]!.bodyTop + geometry.rowBounds[rowIndex]!.top;
+    };
+    const copied = renderCopySelectionText({
+      context,
+      start: { kind: "review-row", visualRow: codeRowTop(0), column: 40 },
+      end: { kind: "review-row", visualRow: codeRowTop(1), column: 20 },
+      side: "right",
+    });
+    expect(copied).toContain("newword");
+    expect(copied).not.toContain("oldword");
+    expect(copied.split("\n").at(-1)).toContain("addedword");
   });
 });

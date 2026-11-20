@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveResponsiveLayout } from "./responsive";
+import { resolveFileLayout, resolveResponsiveLayout } from "./responsive";
 
 // Policy thresholds: >=220 full, >=160 medium with a sidebar, >=120 split without one.
 const TIGHT_WIDTH = 100;
@@ -94,5 +94,33 @@ describe("resolveResponsiveLayout — viewport bucket boundaries", () => {
       layout: "split",
       showSidebar: false,
     });
+  });
+});
+
+describe("resolveFileLayout", () => {
+  test("Smart selects one layout for the whole file independently of terminal width", () => {
+    for (const width of [80, 120, 240]) {
+      const fallback = resolveResponsiveLayout("smart", width).layout;
+      expect(resolveFileLayout("smart", fallback, { stats: { additions: 2, deletions: 0 } })).toBe(
+        "unified",
+      );
+      expect(resolveFileLayout("smart", fallback, { stats: { additions: 0, deletions: 2 } })).toBe(
+        "unified",
+      );
+      expect(resolveFileLayout("smart", fallback, { stats: { additions: 2, deletions: 2 } })).toBe(
+        "split",
+      );
+      expect(resolveFileLayout("smart", fallback, { stats: { additions: 0, deletions: 0 } })).toBe(
+        "unified",
+      );
+    }
+  });
+  test("explicit modes override file content and Auto keeps its responsive fallback", () => {
+    const added = { stats: { additions: 2, deletions: 0 } };
+    const mixed = { stats: { additions: 2, deletions: 2 } };
+    expect(resolveFileLayout("split", "unified", added)).toBe("split");
+    expect(resolveFileLayout("unified", "split", mixed)).toBe("unified");
+    expect(resolveFileLayout("auto", "split", added)).toBe("split");
+    expect(resolveFileLayout("auto", "unified", mixed)).toBe("unified");
   });
 });

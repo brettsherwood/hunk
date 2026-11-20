@@ -6,12 +6,12 @@
 // width their STML will actually be laid out at — all three must agree or
 // note heights and agent feedback drift from what the terminal shows.
 
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../core/run/commandInputs";
 import { resolveSplitPaneWidths } from "../diff/codeColumns";
 
 export interface AgentNoteGeometryInput {
   anchorSide?: "old" | "new";
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   /** Diff pane content width (the `width` prop the diff view renders at). */
   width: number;
   /** Logical reply depth; visual indentation is deliberately bounded. */

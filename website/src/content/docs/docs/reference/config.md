@@ -22,10 +22,10 @@ The user path is `$XDG_CONFIG_HOME/hunk/config.toml` when configured. Otherwise 
 
 **`mode`**
 
-Choose responsive, side-by-side, or unified diff layout.
+Choose responsive, per-file Smart, side-by-side, or unified diff layout.
 
 - **Type:** string
-- **Accepted:** `auto`, `split`, `unified`, or deprecated alias `stack`
+- **Accepted:** `auto`, `smart`, `split`, `unified`, or deprecated alias `stack`
 - **Built-in default:** `auto`
 
 ---

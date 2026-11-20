@@ -3,6 +3,41 @@ import { HUNK_REVIEW_PROTOCOL_VERSION } from "../reviewProtocol";
 import { hunkSessionProtocolParsers } from "./protocolParsers";
 
 describe("Hunk session protocol parsers", () => {
+  test("round-trips Smart reload commands and results through the broker parsers", () => {
+    const input = {
+      sessionId: "session-1",
+      nextInput: {
+        kind: "vcs" as const,
+        rangeEndpoints: { from: "main", to: "feature" },
+        staged: false,
+        options: { mode: "smart" as const },
+      },
+    };
+    expect(
+      hunkSessionProtocolParsers.parseCommandInput(
+        "reload_session",
+        HUNK_REVIEW_PROTOCOL_VERSION,
+        JSON.parse(JSON.stringify(input)),
+      ),
+    ).toEqual(input);
+
+    const result = {
+      sessionId: input.sessionId,
+      inputKind: "vcs" as const,
+      title: "main → feature",
+      sourceLabel: "repo",
+      fileCount: 2,
+      selectedHunkIndex: 0,
+    };
+    expect(
+      hunkSessionProtocolParsers.parseCommandResult(
+        "reload_session",
+        HUNK_REVIEW_PROTOCOL_VERSION,
+        JSON.parse(JSON.stringify(result)),
+      ),
+    ).toEqual(result);
+  });
+
   test("preserves reply targets for single and batched comment commands", () => {
     const reply = {
       replyTo: "user:parent",

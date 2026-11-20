@@ -288,6 +288,9 @@ describe("builtinCommandKeyDefaults", () => {
     expect(defaults.find((entry) => entry.id === "hunk.view.layoutSplit")?.defaultKeys).toEqual([
       "2",
     ]);
+    expect(defaults.find((entry) => entry.id === "hunk.view.layoutSmart")?.defaultKeys).toEqual([
+      "3",
+    ]);
     // Commands with contextual or menu routing ship unbound and remain user-bindable.
     // The filter and note stepping gave `/`, `n`, and `N` to content search.
     expect(
@@ -344,6 +347,12 @@ describe("commands that ship unbound", () => {
 });
 
 describe("executeAppCommand", () => {
+  test("selects Smart layout by its command id", () => {
+    const { commands, ran } = createTestCommands();
+    expect(executeAppCommand(commands, "hunk.view.layoutSmart")).toBe(true);
+    expect(ran).toEqual(["selectLayoutMode:smart"]);
+  });
+
   test("runs a command by id whatever key it is on", () => {
     const { commands, ran } = createTestCommands();
 

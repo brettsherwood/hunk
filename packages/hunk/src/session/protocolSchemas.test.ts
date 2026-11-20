@@ -79,8 +79,8 @@ const _mixedBatchItemIsNotACommand: SessionCommentApplyItemInput = {
 void _mixedBatchItemIsNotACommand;
 
 describe("session daemon request validation", () => {
-  test("uses the daemon revision for structured reloads with canonical layout payloads", () => {
-    expect(HUNK_SESSION_DAEMON_VERSION).toBe(16);
+  test("uses the daemon revision for structured reloads with Smart layout payloads", () => {
+    expect(HUNK_SESSION_DAEMON_VERSION).toBe(17);
   });
 
   test("strictly parses cross-process capabilities", () => {
@@ -128,6 +128,21 @@ describe("session daemon request validation", () => {
     ).toMatchObject({
       nextInput: { options: { mode: "unified" } },
     });
+  });
+
+  test("round-trips Smart layout in HTTP reload requests", () => {
+    const request: SessionDaemonRequest = {
+      action: "reload",
+      selector: { sessionId: "s-1" },
+      nextInput: {
+        kind: "vcs",
+        rangeEndpoints: { from: "main", to: "feature" },
+        staged: false,
+        options: { mode: "smart" },
+      },
+    };
+
+    expect(parseSessionDaemonRequest(JSON.parse(JSON.stringify(request)))).toEqual(request);
   });
 
   test("round-trips launch-scoped extension selection through reload payloads", () => {

@@ -19,7 +19,7 @@ Inside Hunk:
 
 1. Press `]` to jump to the next hunk.
 2. Press `.` to jump to the next file.
-3. Press `1`, `2`, or `0` for unified, split, or responsive auto layout.
+3. Press `1`, `2`, `3`, or `0` for unified, split, per-file Smart, or responsive auto layout. Smart uses unified rows for one-sided changes and split columns for files containing additions and deletions.
 4. Press `q` to quit.
 
 ![Hunk showing a multi-file review stream with a file sidebar, split diff rows, and restrained terminal chrome](/docs/images/review-stream.webp)

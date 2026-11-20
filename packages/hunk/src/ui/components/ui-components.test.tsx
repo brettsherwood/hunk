@@ -3786,7 +3786,7 @@ describe("UI components", () => {
       "Wheel                    scroll vertically",
       "Shift+Wheel              scroll code horizontally",
       "View",
-      "1 / 2 / 0                unified / split / auto",
+      "1 / 2 / 3 / 0            unified / split / smart / auto",
       "s / t                    sidebar / theme selector",
       "a                        toggle AI notes",
       "z                        toggle unchanged context",

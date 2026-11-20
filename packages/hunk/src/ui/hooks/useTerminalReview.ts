@@ -61,7 +61,7 @@ import type { ReviewNoteTargetV1 } from "../../core/review/types";
 import { createReviewStore, type ReviewStore } from "../../core/review/store";
 import { noDiffFileMatchesMessage } from "../../session/agent/errors";
 import type { DiffFile } from "../../core/changeset/model";
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../core/run/commandInputs";
 import type {
   AppliedCommentBatchResult,
   AppliedCommentResult,
@@ -303,7 +303,9 @@ export interface TerminalReview {
 
 /** Live note-card geometry the app publishes for markup validation. */
 export interface AgentNoteGeometrySnapshot {
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
+  /** Concrete layouts include hidden files so targeted daemon comments use their own geometry. */
+  fileLayouts?: ReadonlyMap<string, ResolvedLayout>;
   /** Diff pane content width — the width the diff view renders at. */
   width: number;
 }
@@ -1240,6 +1242,7 @@ export function useTerminalReview({
     (
       markup: string | undefined,
       anchorSide: "old" | "new",
+      fileId: string,
     ): Pick<AppliedCommentResult, "markupWidth" | "markupNotes"> => {
       if (!markup) {
         return {};
@@ -1253,7 +1256,11 @@ export function useTerminalReview({
 
       const geometry = noteGeometry?.current;
       const markupWidth = geometry
-        ? agentNoteMarkupWidth({ anchorSide, layout: geometry.layout, width: geometry.width })
+        ? agentNoteMarkupWidth({
+            anchorSide,
+            layout: geometry.fileLayouts?.get(fileId) ?? geometry.layout,
+            width: geometry.width,
+          })
         : STML_REFERENCE_WIDTH;
       const markupNotes = validateStmlMarkup(markup, markupWidth);
       return {
@@ -1293,7 +1300,7 @@ export function useTerminalReview({
           fileKey: replyParent.note.fileKey,
           target,
           replyParent,
-          feedback: markupFeedback(input.markup, target.side),
+          feedback: markupFeedback(input.markup, target.side, file.id),
         };
       }
 
@@ -1312,7 +1319,7 @@ export function useTerminalReview({
         fileKey,
         target,
         replyParent: undefined,
-        feedback: markupFeedback(input.markup, target.side),
+        feedback: markupFeedback(input.markup, target.side, file.id),
       };
     },
     [allFiles, fileByKey, keyByFileId, markupFeedback, store],

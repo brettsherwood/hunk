@@ -875,7 +875,7 @@ describe("Hunk session daemon server", () => {
     }
   });
 
-  test("forwards reload sourcePath and structured endpoints through the session API", async () => {
+  test("forwards Smart reload mode, sourcePath, and structured endpoints through the session API", async () => {
     const port = await reserveLoopbackPort();
     process.env.HUNK_MCP_HOST = "127.0.0.1";
     process.env.HUNK_MCP_PORT = String(port);
@@ -890,7 +890,7 @@ describe("Hunk session daemon server", () => {
           kind: "vcs",
           rangeEndpoints: { from: "main", to: "feature" },
           staged: false,
-          options: {},
+          options: { mode: "smart" },
         },
       });
 
@@ -920,7 +920,7 @@ describe("Hunk session daemon server", () => {
             kind: "vcs",
             rangeEndpoints: { from: "main", to: "feature" },
             staged: false,
-            options: {},
+            options: { mode: "smart" },
           },
         }),
       });

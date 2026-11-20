@@ -2,7 +2,7 @@ import { DEFAULT_HUNK_GAP } from "../../core/run/reviewGap";
 import { DEFAULT_TAB_WIDTH } from "../../core/run/tabWidth";
 import type { DiffFile } from "../../core/changeset/model";
 import type { ReviewHunkSpan } from "../../core/review/geometry";
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../core/run/commandInputs";
 import { measureAgentInlineNoteHeight } from "../components/panes/AgentInlineNote";
 import type { VisibleAgentNote } from "../lib/agentAnnotations";
 import type { SectionGeometry, VerticalBounds } from "../lib/diffSpatial";
@@ -168,7 +168,7 @@ function createLazyPlannedRowsResolver({
 }: {
   expandedKeys: ReadonlySet<string>;
   file: DiffFile;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   showHunkHeaders: boolean;
   sourceStatus: FileSourceStatus | undefined;
   tabWidth: number;
@@ -206,7 +206,7 @@ function createLazyPlannedRowsResolver({
 }
 
 interface DiffSectionRowHeightOptions {
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   lineNumberDigits: number;
   showHunkHeaders: boolean;
   showLineNumbers: boolean;
@@ -279,7 +279,7 @@ function measurePlannedDiffSectionRowHeight(
 /** Measure one file section from the same render plan used by DiffSectionBody. */
 export function measureDiffSectionGeometry(
   file: DiffFile,
-  layout: Exclude<LayoutMode, "auto">,
+  layout: ResolvedLayout,
   showHunkHeaders: boolean,
   theme: AppTheme,
   visibleAgentNotes: VisibleAgentNote[] = [],
@@ -440,7 +440,7 @@ export function measureDiffSectionGeometry(
 /** Estimate the number of diff-body rows for one file section in the windowed path. */
 export function estimateDiffSectionBodyRows(
   file: DiffFile,
-  layout: Exclude<LayoutMode, "auto">,
+  layout: ResolvedLayout,
   showHunkHeaders: boolean,
   theme: AppTheme,
 ) {

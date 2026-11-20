@@ -219,6 +219,45 @@ describe("responsive app", () => {
     expect(forcedUnified).not.toMatch(/▌.*▌/);
   });
 
+  test("Smart keeps mixed files split and one-sided files unified across widths", async () => {
+    const addedText = `added_${"a".repeat(50)}_END`;
+    const deletedText = `deleted_${"d".repeat(50)}_END`;
+    const bootstrap = createTestVcsAppBootstrap({
+      changesetId: "changeset:smart-responsive",
+      initialMode: "smart",
+      files: [
+        createTestDiffFile({
+          id: "smart-mixed",
+          path: "mixed.ts",
+          before: "old_mixed_value\n",
+          after: "new_mixed_value\n",
+        }),
+        createTestDiffFile({
+          id: "smart-added",
+          path: "added.ts",
+          before: "context\n",
+          after: `context\n${addedText}\n`,
+        }),
+        createTestDiffFile({
+          id: "smart-deleted",
+          path: "deleted.ts",
+          before: `${deletedText}\ncontext\n`,
+          after: "context\n",
+        }),
+      ],
+    });
+    for (const width of [100, 220]) {
+      const frame = await captureFrameForBootstrap(bootstrap, width, 32);
+      expect(
+        frame
+          .split("\n")
+          .some((line) => line.includes("old_mixed_value") && line.includes("new_mixed_value")),
+      ).toBe(true);
+      expect(frame).toContain(addedText);
+      expect(frame).toContain(deletedText);
+    }
+  });
+
   test("pager mode stays responsive while hiding app chrome", async () => {
     const wide = await captureFrameForBootstrap(createBootstrap("auto", true), 220);
     const narrow = await captureFrameForBootstrap(createBootstrap("auto", true), 150);

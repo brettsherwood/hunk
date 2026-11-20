@@ -59,7 +59,7 @@ const rangeEndpointsSchema = z.strictObject({
 
 /** Accept legacy layout vocabulary on the wire while returning canonical CLI state. */
 const layoutModeInputSchema = z
-  .enum(["auto", "split", "unified", "stack"])
+  .enum(["auto", "smart", "split", "unified", "stack"])
   .transform(normalizeLayoutModeInput);
 
 const commonOptionsSchema = z.strictObject({

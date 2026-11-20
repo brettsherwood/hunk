@@ -42,6 +42,7 @@ import {
   unifiedRailColor,
 } from "./diff/rowStyle";
 import { measureTextWidth, sliceTextByWidth } from "./lib/text";
+import { resolveFileLayout } from "./lib/responsive";
 import {
   formatTerminalPath,
   sanitizeTerminalLine,
@@ -359,10 +360,10 @@ function fileModeText(file: DiffFile) {
   return "";
 }
 
-function resolveStaticLayout(options: CommonOptions) {
+function resolveStaticLayout(options: CommonOptions, file: DiffFile) {
   // Static pager output has historically defaulted to unified rows even on wide terminals.
-  // Honor only an explicit split request here so captured hosts avoid surprise layout changes.
-  return options.mode === "split" ? "split" : "unified";
+  // Smart is an explicit per-file choice; Auto keeps the captured host's unified default.
+  return resolveFileLayout(options.mode ?? "auto", "unified", file);
 }
 
 /** Format one parsed diff file for static pager hosts like LazyGit's diff panel. */
@@ -375,7 +376,7 @@ async function renderStaticFile(
 ) {
   const highlighted =
     file.isBinary || file.isTooLarge ? null : await loadHighlightedDiff(file, theme);
-  const layout = resolveStaticLayout(options);
+  const layout = resolveStaticLayout(options, file);
   const tabWidth = options.tabWidth ?? DEFAULT_TAB_WIDTH;
   const rows =
     layout === "split"

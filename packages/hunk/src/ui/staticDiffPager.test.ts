@@ -90,6 +90,46 @@ describe("static diff pager", () => {
     expect(plain).not.toContain("▌  1 +  const value = 2;");
   });
 
+  test("renders Smart one-sided files as unified and mixed files as split at narrow widths", async () => {
+    const patchText = [
+      "diff --git a/addition.txt b/addition.txt",
+      "--- a/addition.txt",
+      "+++ b/addition.txt",
+      "@@ -1 +1,2 @@",
+      " context",
+      "+added",
+      "diff --git a/deletion.txt b/deletion.txt",
+      "--- a/deletion.txt",
+      "+++ b/deletion.txt",
+      "@@ -1,2 +1 @@",
+      " context",
+      "-deleted",
+      "diff --git a/mixed.txt b/mixed.txt",
+      "--- a/mixed.txt",
+      "+++ b/mixed.txt",
+      "@@ -1 +1 @@",
+      "-before",
+      "+after",
+      "",
+    ].join("\n");
+
+    for (const terminalColumns of [80, 200]) {
+      const output = await renderStaticDiffPager(
+        patchText,
+        { mode: "smart" },
+        { terminalColumns, color: false },
+      );
+      const [addition, deletion, mixed] = output.trim().split("\n\n");
+      expect(addition).toContain("addition.txt modified +1 -0");
+      expect(addition).toContain("▌  2 +  added");
+      expect(deletion).toContain("deletion.txt modified +0 -1");
+      expect(deletion).toContain("▌2   -  deleted");
+      const mixedLine = mixed?.split("\n").find((line) => line.includes("before"));
+      expect(mixedLine).toContain("▌1 - before");
+      expect(mixedLine).toContain("▌1 + after");
+    }
+  });
+
   test("preserves redirected split lines without padding every row to the longest line", async () => {
     const shortLines = Array.from({ length: 100 }, (_, index) => `line ${index}`);
     const oldLines = [`${"x".repeat(1_000)}OLDTAIL`, ...shortLines];

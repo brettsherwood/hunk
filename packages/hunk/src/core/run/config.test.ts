@@ -6,6 +6,7 @@ import { getBundledVcsCatalog } from "../../app/vcsCatalog";
 import type { CliInput } from "./commandInputs";
 import {
   diffPersistedViewPreferences,
+  persistedViewPreferencesFromOptions,
   resolveConfiguredCliInput,
   resolveExtensionBootstrapConfig,
   saveGlobalViewPreferences,
@@ -58,6 +59,27 @@ afterEach(() => {
 });
 
 describe("config persistence", () => {
+  test("round-trips Smart mode and includes it in the quit preference diff", () => {
+    const home = createTempDir("hunk-smart-config-home-");
+    const cwd = createTempDir("hunk-smart-config-cwd-");
+    const initial = resolveConfiguredCliInput(createPatchPagerInput(), {
+      cwd,
+      env: { HOME: home },
+    });
+    const initialPreferences = persistedViewPreferencesFromOptions(initial.input.options);
+    const nextPreferences = { ...initialPreferences, mode: "smart" as const };
+
+    expect(diffPersistedViewPreferences(initialPreferences, nextPreferences)).toEqual([
+      { configKey: "mode", previousValue: '"auto"', nextValue: '"smart"' },
+    ]);
+    const configPath = saveGlobalViewPreferences(nextPreferences, { env: { HOME: home } });
+    expect(readFileSync(configPath, "utf8")).toContain('mode = "smart"');
+    expect(
+      resolveConfiguredCliInput(createPatchPagerInput(), { cwd, env: { HOME: home } }).input.options
+        .mode,
+    ).toBe("smart");
+  });
+
   test("writes accepted view preferences to user config without disturbing tables", () => {
     const home = createTempDir("hunk-save-config-home-");
     const configPath = join(home, ".config", "hunk", "config.toml");
@@ -165,6 +187,27 @@ describe("config persistence", () => {
 });
 
 describe("config resolution", () => {
+  test.each(["[patch]", "[pager]"])(
+    "accepts Smart mode in %s preferences and honors CLI overrides",
+    (section) => {
+      const home = createTempDir("hunk-smart-config-home-");
+      const cwd = createTempDir("hunk-smart-config-cwd-");
+      mkdirSync(join(home, ".config", "hunk"), { recursive: true });
+      writeFileSync(join(home, ".config", "hunk", "config.toml"), `${section}\nmode = "smart"\n`);
+
+      expect(
+        resolveConfiguredCliInput(createPatchPagerInput(), { cwd, env: { HOME: home } }).input
+          .options.mode,
+      ).toBe("smart");
+      expect(
+        resolveConfiguredCliInput(createPatchPagerInput({ mode: "split" }), {
+          cwd,
+          env: { HOME: home },
+        }).input.options.mode,
+      ).toBe("split");
+    },
+  );
+
   test("merges global, repo, pager, command, and CLI overrides in the right order", () => {
     const home = createTempDir("hunk-config-home-");
     const repo = createTempDir("hunk-config-repo-");

@@ -257,6 +257,7 @@ function builtinCommandHandlers(
     "hunk.view.cursorLineOff": { run: () => options.selectCursorLine("off") },
     "hunk.view.layoutSplit": { run: () => options.selectLayoutMode("split") },
     "hunk.view.layoutUnified": { run: () => options.selectLayoutMode("unified") },
+    "hunk.view.layoutSmart": { run: () => options.selectLayoutMode("smart") },
     "hunk.view.layoutAuto": { run: () => options.selectLayoutMode("auto") },
     "hunk.view.applyFilePresentationToAllMatching": {
       isEnabled: () => options.canApplyFilePresentationToAllMatching,

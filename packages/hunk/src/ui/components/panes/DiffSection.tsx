@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { DiffFile } from "../../../core/changeset/model";
-import type { LayoutMode } from "../../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../../core/run/commandInputs";
 import type { UserNoteLineTarget } from "../../../core/liveComments";
 import type { FileSourceStatus } from "../../diff/expandCollapsedRows";
 import { DiffSectionBody, type ActiveAddNoteAffordance } from "../../diff/DiffSectionBody";
@@ -29,7 +29,7 @@ interface DiffSectionProps {
   offloadLargeDiff: boolean;
   headerLabelWidth: number;
   headerStatsWidth: number;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   selectedHunkIndex: number;
   copySelectedRowRanges?: Map<string, CopySelectedRowRange>;
   copySelectedSide?: "left" | "right";

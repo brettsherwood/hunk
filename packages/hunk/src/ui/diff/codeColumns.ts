@@ -1,6 +1,6 @@
 import { DEFAULT_TAB_WIDTH, validateTabWidth } from "../../core/run/tabWidth";
 import type { DiffFile } from "../../core/changeset/model";
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../core/run/commandInputs";
 import { measureTextWidth } from "../lib/text";
 import type { DiffRow } from "./diffRowModel";
 
@@ -155,7 +155,7 @@ export function resolveUnifiedCellGeometry(
 
 /** Clamp horizontal reveal against the narrowest code viewport in the active layout. */
 export function resolveCodeViewportWidth(
-  layout: Exclude<LayoutMode, "auto">,
+  layout: ResolvedLayout,
   width: number,
   lineNumberDigits: number,
   showLineNumbers: boolean,

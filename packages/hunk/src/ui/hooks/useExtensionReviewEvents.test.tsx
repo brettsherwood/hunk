@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { testRender } from "@opentui/react/test-utils";
 import { act, Activity, StrictMode, useLayoutEffect, useState } from "react";
 import { createTestDiffFile } from "../../../../../test/helpers/diff-helpers";
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { LayoutMode, ResolvedLayout } from "../../core/run/commandInputs";
 import type {
   ExtensionEventPayloads,
   ExtensionReviewSnapshotNote,
@@ -129,7 +129,7 @@ interface ReviewEventFacts {
   extensions: ExtensionLoadResult;
   filter: string;
   layoutMode: LayoutMode;
-  resolvedLayout: Exclude<LayoutMode, "auto">;
+  resolvedLayout: ResolvedLayout;
   reviewGeneration?: string;
   reviewNotes?: readonly ExtensionReviewSnapshotNote[];
   selectedFile: ExtensionDiffFile | null;
@@ -379,6 +379,66 @@ describe("useExtensionReviewEvents", () => {
         },
         { event: "theme_changed", payload: { themeId: "github-light-default" } },
       ]);
+    } finally {
+      await destroy(harness.setup);
+    }
+  });
+
+  test("reports Smart mode with legacy Auto and follows the selected file's concrete layout", async () => {
+    const extensions = createEmptyExtensionLoadResult("/repo");
+    const seen: SeenEvent[] = [];
+    observeReviewEvents(extensions, seen);
+    const mixedFile = createTestDiffFile({ id: "mixed", path: "mixed.ts" });
+    const additionFile = createTestDiffFile({ id: "addition", path: "addition.ts" });
+    const harness = await renderReviewEvents({ initialFacts: createFacts(extensions, mixedFile) });
+
+    try {
+      await act(async () => harness.updateFacts({ layoutMode: "smart", resolvedLayout: "split" }));
+      await harness.settle();
+      expect(seen).toEqual([
+        {
+          event: "layout_changed",
+          payload: {
+            mode: "auto",
+            layout: "split",
+            canonicalMode: "smart",
+            canonicalLayout: "split",
+          },
+        },
+      ]);
+
+      await act(async () =>
+        harness.updateFacts({
+          selectedFile: additionFile,
+          selectedFileId: additionFile.id,
+          resolvedLayout: "unified",
+        }),
+      );
+      await harness.settle();
+      expect(seen.filter(({ event }) => event === "layout_changed")).toEqual([
+        {
+          event: "layout_changed",
+          payload: {
+            mode: "auto",
+            layout: "split",
+            canonicalMode: "smart",
+            canonicalLayout: "split",
+          },
+        },
+        {
+          event: "layout_changed",
+          payload: {
+            mode: "auto",
+            layout: "stack",
+            canonicalMode: "smart",
+            canonicalLayout: "unified",
+          },
+        },
+      ]);
+
+      await act(async () => harness.updateFacts({}));
+      await harness.settle();
+      expect(seen.filter(({ event }) => event === "layout_changed")).toHaveLength(2);
     } finally {
       await destroy(harness.setup);
     }

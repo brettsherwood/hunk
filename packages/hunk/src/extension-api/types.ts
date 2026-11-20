@@ -21,7 +21,7 @@
  * Extensions can branch on `hunk.apiVersion` so a newer Hunk can keep loading
  * older extensions without guessing at their expectations.
  */
-export const HUNK_EXTENSION_API_VERSION = 28;
+export const HUNK_EXTENSION_API_VERSION = 29;
 export type HunkExtensionApiVersion = typeof HUNK_EXTENSION_API_VERSION;
 
 export type ExtensionNotifyType = "info" | "warning" | "error";
@@ -2290,9 +2290,9 @@ export type SessionReloadReason = "watch" | "daemon" | "extension" | "manual";
 /** @deprecated Use the canonical `unified` vocabulary in new integrations. */
 export type ExtensionLegacyLayout = "stack";
 /** Canonical layout mode vocabulary emitted to extensions. */
-export type ExtensionCanonicalLayoutMode = "auto" | "split" | "unified";
+export type ExtensionCanonicalLayoutMode = "auto" | "smart" | "split" | "unified";
 /** Concrete canonical layout emitted to extensions. */
-export type ExtensionCanonicalResolvedLayout = Exclude<ExtensionCanonicalLayoutMode, "auto">;
+export type ExtensionCanonicalResolvedLayout = "split" | "unified";
 /** Pre-v23 layout vocabulary retained so existing extension source remains exhaustive. */
 export type ExtensionLayoutMode = "auto" | "split" | ExtensionLegacyLayout;
 /** Pre-v23 concrete layout vocabulary retained for source and event compatibility. */
@@ -2345,10 +2345,11 @@ export interface ExtensionEventPayloads {
   /** The user committed a different active theme. Selector previews do not emit this event. */
   theme_changed: { themeId: string };
   /**
-   * The configured layout mode or responsive resolved layout changed.
+   * The configured layout mode or selected file's resolved layout changed.
    *
    * `mode` and `layout` preserve the pre-v23 vocabulary for existing handlers.
-   * New integrations should consume the canonical fields.
+   * Smart mode projects to legacy `auto`; canonical fields report `smart` and the
+   * selected file's concrete layout. New integrations should consume the canonical fields.
    */
   layout_changed: {
     /** @deprecated Use `canonicalMode`. */

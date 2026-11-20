@@ -392,6 +392,15 @@ const BUILTIN_COMMANDS = [
     closesMenu: true,
   },
   {
+    id: "hunk.view.layoutSmart",
+    title: "Smart layout",
+    category: "view",
+    defaultKeys: ["3"],
+    locus: "client-local",
+    publicToExtensions: true,
+    closesMenu: true,
+  },
+  {
     id: "hunk.view.layoutAuto",
     title: "Auto layout",
     category: "view",

@@ -86,6 +86,19 @@ describe("app command catalog", () => {
     ).toBeUndefined();
   });
 
+  test("keeps Smart layout client-local and available to extension commands", () => {
+    const command = entry("hunk.view.layoutSmart");
+    expect(command).toMatchObject({
+      defaultKeys: ["3"],
+      locus: "client-local",
+      publicToExtensions: true,
+      closesMenu: true,
+    });
+    expect(
+      lowerAppCommandToReviewIntent(command, { count: 1, state: createTestReviewState() }),
+    ).toBeUndefined();
+  });
+
   test("lowers semantic navigation commands to the move their scope and direction declare", () => {
     const state = createTestReviewState();
 

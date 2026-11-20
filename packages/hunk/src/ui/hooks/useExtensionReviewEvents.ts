@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { emitExtensionEvent } from "../../extensions/events";
 import { diffExtensionReviewNotes } from "../../extensions/reviewSnapshot";
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { LayoutMode, ResolvedLayout } from "../../core/run/commandInputs";
 import type {
   ExtensionEventPayloads,
   ExtensionReviewSnapshotNote,
@@ -66,7 +66,7 @@ export function useExtensionReviewEvents({
   extensions?: ExtensionLoadResult;
   filter: string;
   layoutMode: LayoutMode;
-  resolvedLayout: Exclude<LayoutMode, "auto">;
+  resolvedLayout: ResolvedLayout;
   reviewGeneration?: string;
   reviewNotes?: readonly ExtensionReviewSnapshotNote[];
   scheduler?: ExtensionReviewEventScheduler;
@@ -188,7 +188,7 @@ export function useExtensionReviewEvents({
     const reported = reportedLayoutRef.current;
     if (reported && reported.extensions === extensions && reported.value !== layoutSignature) {
       emitExtensionEvent(extensions, "layout_changed", {
-        mode: layoutMode === "unified" ? "stack" : layoutMode,
+        mode: layoutMode === "unified" ? "stack" : layoutMode === "smart" ? "auto" : layoutMode,
         layout: resolvedLayout === "unified" ? "stack" : resolvedLayout,
         canonicalMode: layoutMode,
         canonicalLayout: resolvedLayout,

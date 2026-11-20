@@ -6,7 +6,7 @@ import {
 } from "@opentui/core";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { DiffFile } from "../../../core/changeset/model";
-import type { LayoutMode } from "../../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../../core/run/commandInputs";
 import type { AgentAnnotation } from "../../../extension-api/types";
 import { agentNoteBoxLayout } from "../../lib/agentNoteGeometry";
 import {
@@ -160,7 +160,7 @@ export function measureAgentInlineNoteHeight({
 }: {
   annotation: AgentAnnotation;
   anchorSide?: "old" | "new";
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   width: number;
   actions?: AgentInlineNoteActions;
   threadDepth?: number;
@@ -207,7 +207,7 @@ export function AgentInlineNote({
   actionKeyLabels?: { delete: string; edit: string; reply: string };
   anchorSide?: "old" | "new";
   file?: DiffFile;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   noteCount?: number;
   noteIndex?: number;
   /** Join the card's top-right corner to the external range rail. */

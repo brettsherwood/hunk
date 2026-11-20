@@ -9,15 +9,17 @@ Hunk uses the same normalized review model in every layout.
 
 ```bash
 hunk diff --mode auto
+hunk diff --mode smart
 hunk diff --mode split
 hunk diff --mode unified
 ```
 
 - `auto` chooses split on wide terminals and unified on narrow ones.
+- `smart` chooses unified for files with only additions or only deletions, and split for files with both. This choice applies independently to each file at any terminal width; files without changed lines use unified.
 - `split` keeps before and after columns side by side.
 - `unified` shows changed rows in a single-width flow.
 
-Explicit split and unified choices override responsive behavior. Press `0`, `1`, or `2` to switch while reviewing. The former `stack` value remains accepted as a deprecated input alias and normalizes to `unified`.
+Explicit split and unified choices override responsive behavior. Press `0`, `1`, `2`, or `3` for Auto, unified, split, or Smart while reviewing. Smart also applies per file in static pager output; Auto retains unified rows there. The former `stack` value remains accepted as a deprecated input alias and normalizes to `unified`.
 
 ## Tune code rows
 

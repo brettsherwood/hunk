@@ -106,7 +106,11 @@ export interface CliReferenceCommand {
 
 /** Review flags registered on every full-screen review command. */
 export const COMMON_REVIEW_OPTIONS = [
-  { flag: "--mode <mode>", description: "layout mode: auto, split, unified", parse: "layout" },
+  {
+    flag: "--mode <mode>",
+    description: "layout mode: auto, smart, split, unified",
+    parse: "layout",
+  },
   {
     flag: "--cursor-line <style>",
     description: "current-line marker: row, number, off",
@@ -667,7 +671,7 @@ function renderCliHelp() {
     "  --fast                                  review working tree with experimental fast highlighting",
     "",
     "Common review options:",
-    "  --mode <mode>                           layout mode: auto, split, unified",
+    "  --mode <mode>                           layout mode: auto, smart, split, unified",
     "  --watch                                 auto-reload when the current diff input changes",
     "  --agent-context <path>                  JSON sidecar with agent rationale",
     "  --pager                                 use pager-style chrome",

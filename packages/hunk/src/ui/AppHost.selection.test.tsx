@@ -720,6 +720,91 @@ describe("DiffPane copy selection", () => {
     }
   });
 
+  test("Smart keyboard ranges preserve each endpoint's columns across file layouts", async () => {
+    const bootstrap = createTestVcsAppBootstrap({
+      changesetId: "changeset:smart-keyboard-selection",
+      initialMode: "smart",
+      initialCopyDecorations: true,
+      files: [
+        createTestDiffFile({
+          id: "smart-selection-mixed",
+          path: "mixed.ts",
+          before: "old_smart_value\n",
+          after: "new_smart_value\n",
+        }),
+        createTestDiffFile({
+          id: "smart-selection-added",
+          path: "added.ts",
+          before: "",
+          after: "unified_smart_value\n",
+        }),
+      ],
+    });
+    for (const reverse of [false, true]) {
+      const { setup, copied } = await renderSelectionApp(bootstrap, { width: 100, height: 24 });
+      try {
+        const seed = locateText(
+          setup.captureCharFrame(),
+          reverse ? "unified_smart_value" : "new_smart_value",
+        );
+        expect(seed).not.toBeNull();
+        await act(async () => setup.mockMouse.click(seed!.x + 2, seed!.y, MouseButtons.LEFT));
+        await flush(setup);
+        await act(async () => {
+          await setup.mockInput.pressKey("v");
+          await setup.mockInput.pressKey(reverse ? "k" : "j");
+          await setup.mockInput.pressKey("y");
+        });
+        await flush(setup);
+        expect(copied).toHaveLength(1);
+        expect(copied[0]).toContain("new_smart_value");
+        expect(copied[0]).toContain("unified_smart_value");
+        if (!reverse) expect(copied[0]).not.toContain("old_smart_value");
+      } finally {
+        await act(async () => setup.renderer.destroy());
+      }
+    }
+  });
+
+  test("Smart triple-click uses unified columns while another file is selected", async () => {
+    const addedText = `added_${"a".repeat(40)}_END`;
+    const bootstrap = createTestVcsAppBootstrap({
+      changesetId: "changeset:smart-pointer-selection",
+      initialMode: "smart",
+      initialCopyDecorations: true,
+      files: [
+        createTestDiffFile({
+          id: "smart-pointer-mixed",
+          path: "mixed.ts",
+          before: "old_smart_value\n",
+          after: "new_smart_value\n",
+        }),
+        createTestDiffFile({
+          id: "smart-pointer-added",
+          path: "added.ts",
+          before: "",
+          after: `${addedText}\n`,
+        }),
+      ],
+    });
+    const { setup, copied } = await renderSelectionApp(bootstrap, { width: 100, height: 24 });
+    try {
+      const target = locateText(setup.captureCharFrame(), addedText);
+      expect(target).not.toBeNull();
+      await act(async () => {
+        await setup.mockMouse.click(target!.x + 42, target!.y, MouseButtons.LEFT);
+        await setup.mockMouse.click(target!.x + 42, target!.y, MouseButtons.LEFT);
+        await setup.mockMouse.click(target!.x + 42, target!.y, MouseButtons.LEFT);
+      });
+      await flush(setup);
+      await copyCommittedSelection(setup);
+      expect(copied).toHaveLength(1);
+      expect(copied[0]).toContain(addedText);
+    } finally {
+      await act(async () => setup.renderer.destroy());
+    }
+  });
+
   test("dragging in split layout resolves a side and copies one column of code", async () => {
     const { setup, copied } = await renderSelectionApp(createSplitSelectionBootstrap(), {
       width: 160,

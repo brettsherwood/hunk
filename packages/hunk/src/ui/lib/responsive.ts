@@ -1,4 +1,5 @@
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { DiffFile } from "../../core/changeset/model";
+import type { LayoutMode, ResolvedLayout } from "../../core/run/commandInputs";
 
 export type ResponsiveViewport = "full" | "medium" | "tight";
 
@@ -9,7 +10,7 @@ const FULL_VIEWPORT_MIN_WIDTH = 220;
 
 export interface ResponsiveLayout {
   viewport: ResponsiveViewport;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   showSidebar: boolean;
 }
 
@@ -54,4 +55,16 @@ export function resolveResponsiveLayout(
     layout: viewportWidth >= AUTO_SPLIT_MIN_WIDTH ? "split" : "unified",
     showSidebar: viewport !== "tight",
   };
+}
+
+/** Resolve one file's concrete layout while keeping Auto's viewport policy unchanged. */
+export function resolveFileLayout(
+  requestedMode: LayoutMode,
+  fallbackLayout: ResolvedLayout,
+  file: Pick<DiffFile, "stats">,
+): ResolvedLayout {
+  if (requestedMode === "smart") {
+    return file.stats.additions > 0 && file.stats.deletions > 0 ? "split" : "unified";
+  }
+  return requestedMode === "auto" ? fallbackLayout : requestedMode;
 }

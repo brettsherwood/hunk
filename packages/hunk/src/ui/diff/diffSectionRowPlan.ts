@@ -2,7 +2,7 @@ import { reviewExpansionSide } from "../../core/review/expansion";
 import { DEFAULT_TAB_WIDTH } from "../../core/run/tabWidth";
 import { DEFAULT_HUNK_GAP } from "../../core/run/reviewGap";
 import type { DiffFile } from "../../core/changeset/model";
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../core/run/commandInputs";
 import type { VisibleAgentNote } from "../lib/agentAnnotations";
 import type { AppTheme } from "../themes";
 import { findMaxLineNumber, findMaxLineNumberInRows } from "./codeColumns";
@@ -27,7 +27,7 @@ export interface BuildDiffSectionRowPlanOptions {
   expandedKeys?: ReadonlySet<string>;
   file: DiffFile | undefined;
   highlightedDiff?: HighlightedDiffCode | null;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   showHunkHeaders: boolean;
   sourceLineSpans?: (line: string | undefined, sourceLineNumber: number) => RenderSpan[];
   sourceStatus?: FileSourceStatus | undefined;
@@ -40,7 +40,7 @@ export interface BuildDiffSectionRowPlanOptions {
 /** Build Pierre rows for one file using the selected terminal diff layout. */
 function buildBaseRows(
   file: DiffFile,
-  layout: Exclude<LayoutMode, "auto">,
+  layout: ResolvedLayout,
   highlightedDiff: HighlightedDiffCode | null | undefined,
   theme: AppTheme,
   tabWidth: number,

@@ -1,7 +1,7 @@
 import type { DiffFile } from "../../../core/changeset/model";
 import { reviewRangeTargetCoverageIssue } from "../../../core/review/geometry";
 import type { ReviewRangeTargetV1, ReviewSide } from "../../../core/review/types";
-import type { LayoutMode } from "../../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../../core/run/commandInputs";
 import { resolveSplitPaneWidths } from "../../diff/codeColumns";
 import { planCodeRowLayout } from "../../diff/codeRowLayout";
 import {
@@ -66,7 +66,8 @@ export interface CopySelectionContext {
   fileSectionLayouts: FileSectionLayout[];
   headerLabelWidth: number;
   headerStatsWidth: number;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
+  fileLayouts?: ReadonlyMap<string, ResolvedLayout>;
   pinnedHeaderFile?: DiffFile | null;
   reserveAddNoteColumn: boolean;
   sectionGeometry: DiffSectionGeometry[];
@@ -79,7 +80,7 @@ export interface CopySelectionContext {
 /** Resolve which split side a column belongs to in split layout. */
 export function resolveCopySelectionSide(
   column: number,
-  layout: Exclude<LayoutMode, "auto">,
+  layout: ResolvedLayout,
   width: number,
 ): CopySelectionSide | undefined {
   if (layout !== "split") {
@@ -87,6 +88,32 @@ export function resolveCopySelectionSide(
   }
   const { leftWidth } = resolveSplitPaneWidths(width);
   return column < leftWidth ? "left" : "right";
+}
+
+/** Resolve the concrete file layout at one measured selection endpoint. */
+export function resolveCopySelectionLayout(
+  point: CopySelectionPoint,
+  context: CopySelectionContext,
+): ResolvedLayout {
+  const fileId =
+    point.kind === "pinned-header"
+      ? point.fileId
+      : findFileSectionAtOffset(context.fileSectionLayouts, point.visualRow)?.fileId;
+  return (fileId && context.fileLayouts?.get(fileId)) || context.layout;
+}
+
+/** Resolve the acquisition side from the endpoint's own file layout. */
+export function resolveCopySelectionSideAtPoint(
+  point: CopySelectionPoint,
+  context: CopySelectionContext,
+): CopySelectionSide | undefined {
+  return point.kind === "review-row"
+    ? resolveCopySelectionSide(
+        point.column,
+        resolveCopySelectionLayout(point, context),
+        context.width,
+      )
+    : undefined;
 }
 
 /** Clamp one terminal column into the rendered diff body. */
@@ -298,7 +325,8 @@ function resolveCopyVisualLineOffset({
   lineNumberDigits: number;
   row: PlannedReviewRow;
 }) {
-  const { copyDecorations, layout, width } = context;
+  const { copyDecorations, width } = context;
+  const layout = context.fileLayouts?.get(row.fileId) ?? context.layout;
   const splitPaneWidths = layout === "split" ? resolveSplitPaneWidths(width) : null;
 
   if (copyDecorations) {
@@ -442,11 +470,7 @@ export function renderCopySelectionText({
     wrapLines,
   } = context;
 
-  const copySide =
-    side ??
-    (context.layout === "split" && start.kind === "review-row"
-      ? resolveCopySelectionSide(start.column, context.layout, context.width)
-      : undefined);
+  const copySide = side ?? resolveCopySelectionSideAtPoint(start, context);
 
   if (
     copyDecorations &&
@@ -585,14 +609,8 @@ export function expandSelectionPoint(
   clickCount: 2 | 3,
   context: CopySelectionContext,
 ): { startCol: number; endCol: number } | null {
-  const {
-    fileSectionLayouts,
-    layout,
-    reserveAddNoteColumn,
-    sectionGeometry,
-    showLineNumbers,
-    width,
-  } = context;
+  const { fileSectionLayouts, reserveAddNoteColumn, sectionGeometry, showLineNumbers, width } =
+    context;
 
   // Find the section and row at this visual row.
   for (const section of fileSectionLayouts) {
@@ -621,6 +639,7 @@ export function expandSelectionPoint(
       return null;
     }
 
+    const layout = context.fileLayouts?.get(section.fileId) ?? context.layout;
     if (clickCount === 3 && context.copyDecorations) {
       // Triple-click: select the entire rendered line.
       // In split layout, scope to the side containing the click so triple-click never
@@ -883,7 +902,8 @@ export function projectCommentSelection({
 }
 
 export interface SelectionInvalidationFacts {
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
+  fileLayoutSignature?: string;
   wrapLines: boolean;
   width: number;
   viewportHeight: number;

@@ -64,7 +64,7 @@ describe("parseCli", () => {
     expect(parsed.text).toContain("hunk skill path");
     expect(parsed.text).toContain("Global options:");
     expect(parsed.text).toContain("Common review options:");
-    expect(parsed.text).toContain("layout mode: auto, split, unified");
+    expect(parsed.text).toContain("layout mode: auto, smart, split, unified");
     expect(parsed.text).not.toContain("layout mode: auto, split, stack");
     expect(parsed.text).toContain("--file-gap");
     expect(parsed.text).toContain("file separator rows, including ─");
@@ -424,6 +424,13 @@ describe("parseCli", () => {
       kind: "vcs",
       options: { mode: "unified" },
     });
+  });
+
+  test("accepts Smart layout for diff and show", async () => {
+    for (const command of [["diff"], ["show", "HEAD"]]) {
+      const parsed = await parseCli(["bun", "hunk", ...command, "--mode", "smart"]);
+      expect(parsed).toMatchObject({ options: { mode: "smart" } });
+    }
   });
 
   test("treats two existing file paths as revisions unless --files is present", async () => {

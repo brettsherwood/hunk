@@ -11,7 +11,7 @@ Hunk is a review-first terminal diff viewer for agent-authored changesets, built
 
 - multi-file review stream with sidebar navigation
 - inline AI and agent annotations beside the code
-- split, unified, and responsive auto layouts
+- split, unified, responsive auto, and per-file Smart layouts
 - watch mode for auto-reloading file and Git-backed reviews
 - keyboard, mouse, pager, and Git difftool support
 
@@ -180,7 +180,7 @@ Example:
 
 ```toml
 theme = "terminal"   # terminal, auto, any built-in theme id, or custom
-mode = "auto"        # auto, split, unified
+mode = "auto"        # auto, smart, split, unified
 vcs = "git"          # git, jj, sl
 watch = false
 exclude_untracked = false
@@ -197,6 +197,8 @@ agent_notes = false
 prompt_save_view_preferences = true
 transparent_background = false
 ```
+
+Use `hunk diff --mode smart` or press `3` for per-file layout: files containing only additions or only deletions use unified rows, while files containing both use split columns at any terminal width. `0`, `1`, and `2` keep selecting Auto, unified, and split.
 
 Choose a built-in theme, `auto`, or a custom theme with `theme`. See
 [the theme guide](https://hunk.dev/docs/configure/themes/) for automatic selection, custom theme tables,

@@ -5,7 +5,7 @@
  * where each hunk's visible extent falls. Heights resolve before mount, which is why note
  * markup has to lay out deterministically from `(markup, width)` alone.
  */
-import type { LayoutMode } from "../../core/run/commandInputs";
+import type { ResolvedLayout } from "../../core/run/commandInputs";
 import { measureAgentInlineNoteHeight } from "../components/panes/AgentInlineNote";
 import type { SectionGeometry, VerticalBounds } from "../lib/diffSpatial";
 import { reviewRowId } from "../lib/ids";
@@ -14,7 +14,7 @@ import type { PlannedReviewRow } from "./reviewRenderPlan";
 /** Layout inputs needed to turn one planned review row into concrete terminal height. */
 export interface PlannedReviewRowLayoutOptions {
   showHunkHeaders: boolean;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
   width: number;
 }
 

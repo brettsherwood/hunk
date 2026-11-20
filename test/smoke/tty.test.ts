@@ -1,5 +1,5 @@
 import { afterAll, afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cleanupTestConfigHomes, createTestConfigHome } from "../helpers/config-home";
@@ -16,11 +16,36 @@ if (enableTtySmokeTests) {
   setDefaultTimeout(40_000);
 }
 
-/** Check for the util-linux `script` interface these Unix-only terminal tests require. */
+/** Select the host's script interface while keeping a deterministic terminal size. */
+function ttyScriptArguments(command: string, transcript: string) {
+  if (process.platform === "darwin") {
+    const recorder = [
+      "script",
+      "-q",
+      "-F",
+      "-e",
+      transcript,
+      "sh",
+      "-c",
+      `stty cols 80 rows 24; ${command}`,
+    ]
+      .map(shellQuote)
+      .join(" ");
+    // BSD script rejects Bun's socket-backed stdin; cat supplies a conventional pipe.
+    return [
+      "sh",
+      "-c",
+      `cat | ${recorder} & recorder_pid=$!; trap 'kill "$recorder_pid" 2>/dev/null' TERM INT; wait "$recorder_pid"`,
+    ];
+  }
+  return ["script", "-q", "-f", "-e", "-c", command, transcript];
+}
+
+/** Check for a controllable script interface on the current Unix host. */
 function supportsControllableScript() {
   try {
     return (
-      Bun.spawnSync(["script", "-q", "-f", "-e", "-c", "exit 0", "/dev/null"], {
+      Bun.spawnSync(ttyScriptArguments("exit 0", "/dev/null"), {
         stdin: "ignore",
         stdout: "ignore",
         stderr: "ignore",
@@ -99,7 +124,7 @@ function createFixtureFiles(lines = 1) {
   );
 
   const patchProc = Bun.spawnSync(
-    ["git", "diff", "--no-index", "--no-color", "--", before, after],
+    ["git", "diff", "--no-index", "--no-color", "--", "before.ts", "after.ts"],
     {
       cwd: dir,
       stdin: "ignore",
@@ -108,7 +133,7 @@ function createFixtureFiles(lines = 1) {
     },
   );
   const coloredPatchProc = Bun.spawnSync(
-    ["git", "diff", "--no-index", "--color=always", "--", before, after],
+    ["git", "diff", "--no-index", "--color=always", "--", "before.ts", "after.ts"],
     {
       cwd: dir,
       stdin: "ignore",
@@ -177,7 +202,7 @@ async function waitUntil<T>(
 
 /** Start a real terminal command whose keyboard input the test controls directly. */
 function spawnTtySmokeProcess(command: string, cwd: string, transcript: string) {
-  return Bun.spawn(["script", "-q", "-f", "-e", "-c", command, transcript], {
+  return Bun.spawn(ttyScriptArguments(command, transcript), {
     cwd,
     stdin: "pipe",
     stdout: "ignore",
@@ -194,7 +219,7 @@ function spawnTtySmokeProcess(command: string, cwd: string, transcript: string) 
   });
 }
 
-/** Read a terminal transcript if util-linux `script` has created it. */
+/** Read a terminal transcript after script creates it. */
 async function readTranscript(transcript: string) {
   const file = Bun.file(transcript);
   return (await file.exists()) ? await file.text() : "";
@@ -213,7 +238,10 @@ async function waitForTranscript(
       return raw;
     }
     if (proc.exitCode !== null) {
-      throw new Error(`TTY process exited with ${proc.exitCode} before ${label}.`);
+      const stderr = await new Response(proc.stderr).text();
+      throw new Error(
+        `TTY process exited with ${proc.exitCode} before ${label}. ${stderr} ${raw.slice(-2_000)}`,
+      );
     }
     return null;
   });
@@ -409,6 +437,10 @@ async function driveTtySmoke(options: {
       }
     }
 
+    if (process.platform === "darwin") {
+      // Let the BSD recorder's input-forwarding pipeline finish once interaction is complete.
+      proc.stdin.end();
+    }
     await waitForTtyExit(proc);
     return stripTerminalControl(await readTranscript(options.transcript));
   } catch (error) {
@@ -419,7 +451,7 @@ async function driveTtySmoke(options: {
 }
 
 async function runTtySmoke(options: {
-  mode?: "split" | "unified" | "stack";
+  mode?: "split" | "unified" | "stack" | "smart";
   pager?: boolean;
   agentContext?: boolean;
   interaction?: TtyInteraction;
@@ -482,6 +514,60 @@ afterEach(() => {
 
 describe("TTY render smoke", () => {
   const ttyTest = enableTtySmokeTests && ttyToolsAvailable ? test : test.skip;
+
+  ttyTest("smart mode renders a mixed working-tree diff in a real terminal", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "hunk-smart-tty-"));
+    tempDirs.push(dir);
+    const git = (...args: string[]) => {
+      const result = Bun.spawnSync(["git", ...args], {
+        cwd: dir,
+        stdin: "ignore",
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      if (result.exitCode !== 0) {
+        throw new Error(Buffer.from(result.stderr).toString("utf8"));
+      }
+    };
+    git("init", "-q");
+    writeFileSync(join(dir, "mixed.ts"), "export const version = 'old';\n");
+    writeFileSync(join(dir, "added.ts"), "");
+    git("add", "mixed.ts", "added.ts");
+    git(
+      "-c",
+      "user.name=TTY Test",
+      "-c",
+      "user.email=tty@example.invalid",
+      "commit",
+      "-qm",
+      "baseline",
+    );
+    writeFileSync(join(dir, "mixed.ts"), "export const version = 'new';\n");
+    writeFileSync(
+      join(dir, "added.ts"),
+      "export const added = '123456789012345678901234567890UNIFIED';\n",
+    );
+
+    const args = ["diff", "--mode", "smart", "--no-sidebar", "--no-wrap"];
+    const output = await driveTtySmoke({
+      command: `bun run ${shellQuote(sourceEntrypoint)} ${args.map(shellQuote).join(" ")}`,
+      cwd: dir,
+      transcript: join(dir, "transcript.txt"),
+      initialPredicate: (text) =>
+        text.includes("7890UNIFIED';") && text.includes("'old'") && text.includes("'new'"),
+      interaction: "quit",
+      pager: false,
+    });
+    expect(output).toContain("View  Navigate  Agent  Help");
+    expect(output).toContain("7890UNIFIED';");
+    expect(output).toContain("export const version = 'old';");
+    expect(output).toContain("export const version = 'new';");
+    const artifactDir = process.env.HUNK_TEST_ARTIFACT_DIR;
+    if (artifactDir) {
+      mkdirSync(artifactDir, { recursive: true });
+      writeFileSync(join(artifactDir, "smart-tty.txt"), output);
+    }
+  });
 
   ttyTest("split mode renders chrome and rails in a terminal transcript", async () => {
     const output = await runTtySmoke({ mode: "split", agentContext: true });

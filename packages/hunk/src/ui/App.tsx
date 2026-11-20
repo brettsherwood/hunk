@@ -120,7 +120,7 @@ import { HUNK_FILES_PANE_KEY } from "../extensions/extensionIds";
 import { maxFileHeaderStatsWidth } from "./lib/fileHeader";
 import { setMouseCapture } from "./lib/mouseCapture";
 import { openSelectedFileInEditor } from "./lib/openInEditor";
-import { resolveResponsiveLayout } from "./lib/responsive";
+import { resolveFileLayout, resolveResponsiveLayout } from "./lib/responsive";
 import type { WorkspaceRefreshRequest } from "./currentReviewRefresh";
 import { ThemeController } from "./theme/controller";
 import {
@@ -513,7 +513,19 @@ export function App({
   const bodyPadding = pagerMode ? 0 : BODY_PADDING;
   const bodyWidth = Math.max(0, terminal.width - bodyPadding);
   const responsiveLayout = resolveResponsiveLayout(layoutMode, terminal.width);
-  const resolvedLayout = responsiveLayout.layout;
+  const fileLayouts = useMemo(
+    () =>
+      new Map(
+        reviewFiles.map((file) => [
+          file.id,
+          resolveFileLayout(layoutMode, responsiveLayout.layout, file),
+        ]),
+      ),
+    [layoutMode, responsiveLayout.layout, reviewFiles],
+  );
+  const resolvedLayout = selectedFile
+    ? (fileLayouts.get(selectedFile.id) ?? responsiveLayout.layout)
+    : responsiveLayout.layout;
   const canForceShowSidebar =
     bodyWidth >= SIDEBAR_MIN_WIDTH + EXTENSION_PANE_DIVIDER_SIZE + DIFF_MIN_WIDTH;
   // Derive host contributions from current state so filters and notices cannot go stale.
@@ -814,7 +826,7 @@ export function App({
   const diffContentWidth = Math.max(0, diffPaneWidth - 2);
   // Publish the live note geometry for daemon-driven markup validation; the
   // note markup width mirrors what AgentInlineNote lays STML out at.
-  noteGeometryRef.current = { layout: resolvedLayout, width: diffContentWidth };
+  noteGeometryRef.current = { layout: resolvedLayout, fileLayouts, width: diffContentWidth };
   const noteMarkupWidth = agentNoteMarkupWidth({
     anchorSide: "new",
     layout: resolvedLayout,
@@ -873,29 +885,10 @@ export function App({
     selectedHunkIndex,
     showAgentNotes,
   });
-  const maxVisibleLineNumber = useMemo(
-    () =>
-      filteredFiles.reduce(
-        (maxLineNumber, file) => Math.max(maxLineNumber, findMaxLineNumber(file)),
-        1,
-      ),
-    [filteredFiles],
-  );
-  const maxLineNumberDigits = String(maxVisibleLineNumber).length;
-  const codeViewportWidth = useMemo(
-    () =>
-      resolveCodeViewportWidth(
-        resolvedLayout,
-        diffContentWidth,
-        maxLineNumberDigits,
-        showLineNumbers,
-      ),
-    [diffContentWidth, maxLineNumberDigits, resolvedLayout, showLineNumbers],
-  );
   // Redraw subsequent geometry changes without clearing a review mounted into an existing root.
   useIntermediateRenderAfterMount(
     renderer,
-    [renderSidebar, resolvedLayout, terminal.height, terminal.width, wrapLines],
+    [renderSidebar, layoutMode, fileLayouts, terminal.height, terminal.width, wrapLines],
     Boolean(onFirstFrameReady),
   );
   const firstFrameReportedRef = useRef(false);
@@ -970,14 +963,24 @@ export function App({
       return 0;
     }
 
-    return Math.max(
-      0,
-      filteredFiles.reduce(
-        (maxWidth, file) => Math.max(maxWidth, maxFileCodeLineWidth(file, tabWidth)),
-        0,
-      ) - codeViewportWidth,
-    );
-  }, [codeViewportWidth, filteredFiles, tabWidth, wrapLines]);
+    return filteredFiles.reduce((maxOffset, file) => {
+      const viewportWidth = resolveCodeViewportWidth(
+        fileLayouts.get(file.id) ?? responsiveLayout.layout,
+        diffContentWidth,
+        String(findMaxLineNumber(file)).length,
+        showLineNumbers,
+      );
+      return Math.max(maxOffset, maxFileCodeLineWidth(file, tabWidth) - viewportWidth);
+    }, 0);
+  }, [
+    diffContentWidth,
+    fileLayouts,
+    filteredFiles,
+    responsiveLayout.layout,
+    showLineNumbers,
+    tabWidth,
+    wrapLines,
+  ]);
 
   useEffect(() => {
     setCodeHorizontalOffset((current) => clamp(current, 0, maxCodeHorizontalOffset));
@@ -1639,6 +1642,8 @@ export function App({
             headerLabelWidth={diffHeaderLabelWidth}
             headerStatsWidth={diffHeaderStatsWidth}
             layout={resolvedLayout}
+            layoutMode={layoutMode}
+            fileLayouts={fileLayouts}
             scrollRef={diffScrollRef}
             selectedFileId={selectedFile?.id}
             selectedHunkIndex={selectedHunkIndex}

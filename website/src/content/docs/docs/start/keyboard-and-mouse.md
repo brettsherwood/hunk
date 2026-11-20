@@ -29,22 +29,22 @@ Hunk navigation stays review-wide: hunk and file shortcuts move through the same
 
 ## Change the view
 
-| Key             | Action                                           |
-| --------------- | ------------------------------------------------ |
-| `0` / `1` / `2` | Auto / unified / split layout                    |
-| `s`             | Toggle files pane                                |
-| `t`             | Choose a theme                                   |
-| `l`             | Toggle line numbers                              |
-| `w`             | Toggle line wrapping                             |
-| `m`             | Toggle hunk metadata                             |
-| `M`             | Toggle menu bar                                  |
-| `z`             | Toggle unchanged context for the selected hunk   |
-| `a`             | Toggle agent notes                               |
-| `e`             | Open the selected file in `$EDITOR`              |
-| `Tab`           | Move focus between the file list and file filter |
-| `r`             | Reload a reloadable input                        |
-| `F10`           | Open menus                                       |
-| `q`             | Quit                                             |
+| Key                   | Action                                           |
+| --------------------- | ------------------------------------------------ |
+| `0` / `1` / `2` / `3` | Auto / unified / split / Smart layout            |
+| `s`                   | Toggle files pane                                |
+| `t`                   | Choose a theme                                   |
+| `l`                   | Toggle line numbers                              |
+| `w`                   | Toggle line wrapping                             |
+| `m`                   | Toggle hunk metadata                             |
+| `M`                   | Toggle menu bar                                  |
+| `z`                   | Toggle unchanged context for the selected hunk   |
+| `a`                   | Toggle agent notes                               |
+| `e`                   | Open the selected file in `$EDITOR`              |
+| `Tab`                 | Move focus between the file list and file filter |
+| `r`                   | Reload a reloadable input                        |
+| `F10`                 | Open menus                                       |
+| `q`                   | Quit                                             |
 
 Hunk may offer to save view changes on quit. Saving writes personal preferences globally unless the repository already has a `.hunk/config.toml`.
 

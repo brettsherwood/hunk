@@ -99,6 +99,19 @@ function registeredCommand(
 }
 
 describe("buildAppMenus", () => {
+  test("checks only the requested layout and exposes Smart through key 3", () => {
+    const { commands } = createTestCommands();
+    for (const layoutMode of ["auto", "smart", "split", "unified"] as const) {
+      const menus = buildAppMenus({ commands, ...MENU_STATE, layoutMode });
+      expect(
+        items(menus.view)
+          .filter((item) => item.checked && item.commandId?.startsWith("hunk.view.layout"))
+          .map((item) => item.commandId),
+      ).toEqual([`hunk.view.layout${layoutMode[0]!.toUpperCase()}${layoutMode.slice(1)}`]);
+      expect(entry(menus, "view", "Smart view").hint).toBe("3");
+    }
+  });
+
   test("the current-line entries check the active style", () => {
     const { commands } = createTestCommands();
 

@@ -312,8 +312,8 @@ and retires the replaced instance at that explicit ownership boundary.
 
 ### `hunk.apiVersion`
 
-The API generation this Hunk speaks (currently `28`). Branch on it if you want
-one file to support several Hunk versions. Version 28 adds host-owned syntax highlighting for
+The API generation this Hunk speaks (currently `29`). Branch on it if you want
+one file to support several Hunk versions. Version 29 adds canonical Smart layout mode and the `hunk.view.layoutSmart` command; version 28 adds host-owned syntax highlighting for
 file-view code documents; version 27 adds `ctx.selection.files`, the visible files in review order;
 version 26 adds the status line (`ctx.statusLine` items and `ctx.prompts.line()` inline prompts);
 version 25 adds Promise-returning watch signatures and watch cancellation; version 24 adds review
@@ -2196,7 +2196,7 @@ the review then active.
 | `hunk_viewed`          | `{ file, hunkIndex }`                                | when selection settles on a different hunk                |
 | `filter_changed`       | `{ filter }`                                         | whenever the file-filter query changes                    |
 | `theme_changed`        | `{ themeId }`                                        | when the user commits a new theme                         |
-| `layout_changed`       | `{ mode, layout, canonicalMode?, canonicalLayout? }` | mode or responsive split/unified layout changes           |
+| `layout_changed`       | `{ mode, layout, canonicalMode?, canonicalLayout? }` | mode or selected-file split/unified layout changes        |
 | `watch_reload_pending` | `{}`                                                 | watcher observed a change before its reload check         |
 | `note_created`         | `{ note }`                                           | a user saves an inline review note                        |
 | `note_edited`          | `{ note }`                                           | a draft body changes or an existing note is saved         |
@@ -2209,7 +2209,7 @@ A newly mounted extension instance receives `startup` before its first
 `session_reload` once the matching review generation has committed.
 
 Starting with extension API v23, `layout_changed` adds `canonicalMode` and
-`canonicalLayout`. They emit `"auto"`, `"split"`, or `"unified"` for the mode and
+`canonicalLayout`. They emit `"auto"`, `"smart"` (API v29), `"split"`, or `"unified"` for the mode and
 `"split"` or `"unified"` for its resolved layout. The original `mode` and `layout`
 fields remain available for compatibility and continue to report `"stack"`
 where their canonical counterparts report `"unified"`. To preserve exhaustive
@@ -2217,6 +2217,9 @@ existing source, `ExtensionLayoutMode` and `ExtensionResolvedLayout` retain thei
 pre-v23 shapes; new extensions use `ExtensionCanonicalLayoutMode` and
 `ExtensionCanonicalResolvedLayout`. Hunk will keep the deprecated `"stack"`
 literal and legacy event fields until a separately announced major API revision.
+Smart projects to `"auto"` in the legacy `mode` field. Its `canonicalLayout` reports
+the selected file's concrete layout, so moving between one-sided and mixed files
+can emit `layout_changed` while `canonicalMode` remains `"smart"`.
 
 `selection_changed` is trailing-debounced on purpose: holding `[`/`]` retargets
 the selection many times a second, and handlers only care where the user landed.

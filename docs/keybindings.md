@@ -155,6 +155,7 @@ Review and shared commands:
 | `hunk.view.cursorLineOff`                      | Hide the current-line marker                   | _(none)_                     |
 | `hunk.view.cursorLineRow`                      | Highlight the current row                      | _(none)_                     |
 | `hunk.view.layoutAuto`                         | Auto layout                                    | `0`                          |
+| `hunk.view.layoutSmart`                        | Smart per-file layout                          | `3`                          |
 | `hunk.view.layoutSplit`                        | Split layout                                   | `2`                          |
 | `hunk.view.layoutUnified`                      | Unified layout                                 | `1`                          |
 | `hunk.view.openThemeSelector`                  | Choose theme                                   | `t`                          |

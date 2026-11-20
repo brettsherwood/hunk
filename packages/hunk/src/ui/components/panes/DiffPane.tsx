@@ -16,7 +16,7 @@ import {
   type WheelScrollLines,
 } from "../../../core/run/wheelScrollLines";
 import type { DiffFile } from "../../../core/changeset/model";
-import type { CursorLine, LayoutMode } from "../../../core/run/commandInputs";
+import type { CursorLine, LayoutMode, ResolvedLayout } from "../../../core/run/commandInputs";
 import type { ReviewNoteTargetV1 } from "../../../core/review/types";
 import type { AgentAnnotation } from "../../../extension-api/types";
 import { resolveReviewRevealNoteId } from "../../../core/review/selectors";
@@ -308,6 +308,7 @@ function buildHighlightPrefetchFileIds({
 
 const EMPTY_EXPANDED_GAP_KEYS: ReadonlySet<string> = new Set();
 const EMPTY_EXPANDED_GAPS_BY_FILE_ID: Record<string, ReadonlySet<string>> = {};
+const EMPTY_FILE_LAYOUTS: ReadonlyMap<string, ResolvedLayout> = new Map();
 const EMPTY_FILE_VIEWS: ReadonlyMap<string, ResolvedFileViewLayout> = new Map();
 const EMPTY_LINE_HIGHLIGHTS: ReadonlyMap<string, readonly ValidatedLineHighlight[]> = new Map();
 const EMPTY_SOURCE_STATUS_BY_FILE_ID: Record<string, FileSourceStatus> = {};
@@ -326,6 +327,8 @@ export function DiffPane({
   headerLabelWidth,
   headerStatsWidth,
   layout,
+  layoutMode = layout,
+  fileLayouts = EMPTY_FILE_LAYOUTS,
   scrollRef,
   selectedFileId,
   selectedHunkIndex,
@@ -405,7 +408,10 @@ export function DiffPane({
   lineHighlights?: ReadonlyMap<string, readonly ValidatedLineHighlight[]>;
   headerLabelWidth: number;
   headerStatsWidth: number;
-  layout: Exclude<LayoutMode, "auto">;
+  layout: ResolvedLayout;
+  /** Requested policy and concrete per-file layouts for the whole review stream. */
+  layoutMode?: LayoutMode;
+  fileLayouts?: ReadonlyMap<string, ResolvedLayout>;
   scrollRef: RefObject<ScrollBoxRenderable | null>;
   selectedFileId?: string;
   selectedHunkIndex: number;
@@ -866,7 +872,15 @@ export function DiffPane({
   const hasReadScrollViewportRef = useRef(false);
   const previousSectionGeometryRef = useRef<DiffSectionGeometry[] | null>(null);
   const previousFilesRef = useRef<DiffFile[]>(files);
-  const previousLayoutRef = useRef(layout);
+  const fileLayoutSignature = useMemo(
+    () =>
+      JSON.stringify([
+        layoutMode,
+        files.map((file) => [file.id, fileLayouts.get(file.id) ?? layout]),
+      ]),
+    [fileLayouts, files, layout, layoutMode],
+  );
+  const previousLayoutRef = useRef(fileLayoutSignature);
   const previousWrapLinesRef = useRef(wrapLines);
   const previousViewportPaneHeightRef = useRef(height);
   const draftNoteId = draftNote?.id ?? null;
@@ -1107,7 +1121,7 @@ export function DiffPane({
         }
         return measureDiffSectionGeometry(
           file,
-          layout,
+          fileLayouts.get(file.id) ?? layout,
           showHunkHeaders,
           theme,
           EMPTY_VISIBLE_AGENT_NOTES,
@@ -1127,6 +1141,7 @@ export function DiffPane({
       fileViewRenderPlans,
       files,
       hunkGap,
+      fileLayouts,
       layout,
       reserveAddNoteColumn,
       showHunkHeaders,
@@ -1155,7 +1170,7 @@ export function DiffPane({
 
         return measureDiffSectionGeometry(
           file,
-          layout,
+          fileLayouts.get(file.id) ?? layout,
           showHunkHeaders,
           theme,
           notes,
@@ -1177,6 +1192,7 @@ export function DiffPane({
       fileViewRenderPlans,
       files,
       hunkGap,
+      fileLayouts,
       layout,
       reserveAddNoteColumn,
       showHunkHeaders,
@@ -1253,7 +1269,8 @@ export function DiffPane({
   const selectionGeometryKey = useMemo(
     () =>
       selectionInvalidationIdentity({
-        layout,
+        layout: fileLayouts.get(files[0]?.id ?? "") ?? layout,
+        fileLayoutSignature,
         wrapLines,
         width: diffContentWidth,
         // The pane's planned height is stable from first paint; OpenTUI publishes its smaller
@@ -1272,6 +1289,9 @@ export function DiffPane({
       diffContentWidth,
       height,
       layout,
+      fileLayouts,
+      files,
+      fileLayoutSignature,
       scrollViewport.height,
       sectionGeometry,
       selectionContentIdentities,
@@ -1362,6 +1382,7 @@ export function DiffPane({
       headerLabelWidth,
       headerStatsWidth,
       layout,
+      fileLayouts,
       pinnedHeaderFile,
       reserveAddNoteColumn,
       sectionGeometry,
@@ -1379,6 +1400,7 @@ export function DiffPane({
       headerLabelWidth,
       headerStatsWidth,
       layout,
+      fileLayouts,
       pinnedHeaderFile,
       reserveAddNoteColumn,
       sectionGeometry,
@@ -1418,7 +1440,7 @@ export function DiffPane({
   const currentLinePaintFile = useMemo(() => {
     if (
       !currentLinePaintRequested ||
-      layout !== "split" ||
+      (renderedLineCursor && (fileLayouts.get(renderedLineCursor.fileId) ?? layout) !== "split") ||
       cursorLine === "off" ||
       !renderedLineCursor ||
       pagerMode ||
@@ -1432,6 +1454,7 @@ export function DiffPane({
     cursorLine,
     fileSectionIndexById,
     fileViewRenderPlans,
+    fileLayouts,
     files,
     layout,
     pagerMode,
@@ -1977,7 +2000,7 @@ export function DiffPane({
   );
 
   useLayoutEffect(() => {
-    const layoutChanged = previousLayoutRef.current !== layout;
+    const layoutChanged = previousLayoutRef.current !== fileLayoutSignature;
     const explicitLayoutToggle = previousLayoutToggleRequestIdRef.current !== layoutToggleRequestId;
     const wrapChanged = previousWrapLinesRef.current !== wrapLines;
     const previousSectionMetrics = previousSectionGeometryRef.current;
@@ -2064,7 +2087,7 @@ export function DiffPane({
         const timeouts = retryDelays.map((delay) => setTimeout(restoreViewportAnchor, delay));
 
         previousDraftNoteIdRef.current = currentDraftNoteId;
-        previousLayoutRef.current = layout;
+        previousLayoutRef.current = fileLayoutSignature;
         previousLayoutToggleRequestIdRef.current = layoutToggleRequestId;
         previousWrapLinesRef.current = wrapLines;
         previousSectionGeometryRef.current = sectionGeometry;
@@ -2115,7 +2138,7 @@ export function DiffPane({
         const retryDelays = [0, 16, 48];
         const timeouts = retryDelays.map((delay) => setTimeout(restoreViewportAnchor, delay));
 
-        previousLayoutRef.current = layout;
+        previousLayoutRef.current = fileLayoutSignature;
         previousLayoutToggleRequestIdRef.current = layoutToggleRequestId;
         previousWrapLinesRef.current = wrapLines;
         previousSectionGeometryRef.current = sectionGeometry;
@@ -2128,7 +2151,7 @@ export function DiffPane({
     }
 
     previousDraftNoteIdRef.current = currentDraftNoteId;
-    previousLayoutRef.current = layout;
+    previousLayoutRef.current = fileLayoutSignature;
     previousLayoutToggleRequestIdRef.current = layoutToggleRequestId;
     previousWrapLinesRef.current = wrapLines;
     previousSectionGeometryRef.current = sectionGeometry;
@@ -2138,7 +2161,7 @@ export function DiffPane({
     draftNoteId,
     fileGap,
     files,
-    layout,
+    fileLayoutSignature,
     lineCursor,
     layoutToggleRequestId,
     layoutToggleScrollTop,
@@ -2575,7 +2598,7 @@ export function DiffPane({
                 <box
                   // Remount the diff content when width/layout/wrap mode changes so viewport culling
                   // recomputes against the new row geometry, while the outer scrollbox keeps its state.
-                  key={`diff-content:${layout}:${wrapLines ? "wrap" : "nowrap"}:tabs-${tabWidth}:${width}`}
+                  key={`diff-content:${fileLayoutSignature}:${wrapLines ? "wrap" : "nowrap"}:tabs-${tabWidth}:${width}`}
                   style={{ width: "100%", flexDirection: "column", overflow: "visible" }}
                 >
                   {fileRenderItems.map((item) => {
@@ -2609,7 +2632,7 @@ export function DiffPane({
                         offloadLargeDiff={offloadLargeDiff}
                         headerLabelWidth={headerLabelWidth}
                         headerStatsWidth={headerStatsWidth}
-                        layout={layout}
+                        layout={fileLayouts.get(file.id) ?? layout}
                         selectedHunkIndex={file.id === selectedFileId ? selectedHunkIndex : -1}
                         copySelectedRowRanges={copySelectedRowKeysByFile.get(file.id)}
                         copySelectedSide={copySelectionSide}
