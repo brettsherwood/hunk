@@ -1,4 +1,4 @@
-import { TextAttributes, MouseButton, type MouseEvent as TuiMouseEvent } from "@opentui/core";
+import { MouseButton, type MouseEvent as TuiMouseEvent } from "@opentui/core";
 import { memo } from "react";
 import type { ExtensionSidebarTheme } from "../../../extension-api/types";
 import { diffRailMarker } from "../../diff/rowStyle";
@@ -153,7 +153,7 @@ export const FileListItem = memo(function FileListItem({
   entry,
   paddingLeft = 1,
   selected,
-  viewed = false,
+  viewed,
   statsWidth,
   textWidth,
   theme,
@@ -171,14 +171,18 @@ export const FileListItem = memo(function FileListItem({
   const rowBackground = selected ? theme.panelAlt : theme.panel;
   const stats = sidebarEntryStats(entry);
   const { icon, color } = getFileStateIcon(entry, theme);
+  const viewedWidth = viewed === undefined ? 0 : 2;
   const iconWidth = icon ? 2 : 0; // icon + space
   const statsSectionWidth = statsWidth > 0 ? statsWidth + 1 : 0;
   const indentWidth = fileSidebarIndentWidth(
     entry.depth,
     textWidth,
-    iconWidth + statsSectionWidth + 1,
+    viewedWidth + iconWidth + statsSectionWidth + 1,
   );
-  const nameWidth = Math.max(1, textWidth - 1 - iconWidth - statsSectionWidth - indentWidth);
+  const nameWidth = Math.max(
+    1,
+    textWidth - 1 - viewedWidth - iconWidth - statsSectionWidth - indentWidth,
+  );
 
   return (
     <box
@@ -203,10 +207,9 @@ export const FileListItem = memo(function FileListItem({
           backgroundColor: rowBackground,
         }}
       >
+        {viewed !== undefined && <text fg={theme.accent}>{viewed ? "✓ " : "  "}</text>}
         {icon && <text fg={color}>{icon} </text>}
-        <text fg={theme.text} attributes={viewed ? TextAttributes.NONE : TextAttributes.BOLD}>
-          {padText(fitText(entry.name, nameWidth, "…"), nameWidth)}
-        </text>
+        <text fg={theme.text}>{padText(fitText(entry.name, nameWidth, "…"), nameWidth)}</text>
         {statsSectionWidth > 0 && (
           <box
             style={{

@@ -2,8 +2,8 @@
 
 This branch starts from Hunk v0.23.0 and carries three personal review changes: per-file Smart
 layout, session-only Viewed marks, and a fixed column for the Viewed checkbox. Viewed marks belong
-to the current review session; unviewed filenames are bold in the Files pane and return to
-normal weight when marked Viewed. Viewed marks are not written into the repository or user config.
+to the current review session; viewed files show a checkmark in the Files pane, with an
+empty aligned slot for unviewed files. Viewed marks are not written into the repository or user config.
 
 The setup helper builds this checkout into private, versioned releases under .personal/. Its
 default command shim lives at .personal/bin/hunk (hunk.cmd on Windows), so it leaves any existing

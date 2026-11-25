@@ -226,14 +226,14 @@ describe("PTY Smart layout", () => {
       const deletion = await harness.clickAndWaitForSnapshot(
         session,
         /c-deletions\.ts/,
-        (frame) => frame.includes("▌M c-deletions.ts") && frame.includes("export const deleted"),
+        (frame) => frame.includes("▌  M c-deletions.ts") && frame.includes("export const deleted"),
       );
       expect(isSplitCodeRow(deletion, "export const deleted")).toBe(false);
       // Bottom clamping keeps neighboring code visible; the sidebar mark proves target ownership.
       const back = await harness.pressAndWaitForSnapshot(
         session,
         "[",
-        (frame) => frame.includes("▌M b-replacement.ts") && isSplitCodeRow(frame, "oldMixed"),
+        (frame) => frame.includes("▌  M b-replacement.ts") && isSplitCodeRow(frame, "oldMixed"),
       );
       expect(back).toContain("newMixed");
     } finally {

@@ -111,31 +111,31 @@ describe("PTY viewed files", () => {
         cols,
         rows: 24,
       });
-      /** Read the filename style from the sidebar occurrence before the diff header. */
-      const sidebarBold = () => {
+      /** Read the Viewed marker from the sidebar occurrence before the diff header. */
+      const sidebarChecked = () => {
         for (const line of session.getTerminalData().lines) {
           const text = line.spans.map((span) => span.text).join("");
-          if (text.indexOf(firstFile) < 0 || text.indexOf(firstFile) > 25) continue;
-          const span = line.spans.find((span) => span.text.includes(firstFile));
-          if (span) return (span.flags & 1) !== 0;
+          const column = text.indexOf("a-first");
+          if (column < 0 || column > 25) continue;
+          return text.slice(0, column).includes("✓");
         }
         throw new Error("Expected the first filename in the Files pane.");
       };
       try {
         await waitForViewedReview(session, { deep: true });
-        expect(sidebarBold()).toBe(true);
+        expect(sidebarChecked()).toBe(false);
         await session.press(["shift", "v"]);
         await harness.waitForSnapshot(
           session,
-          (frame) => isViewed(frame, firstFile) && !sidebarBold(),
+          (frame) => isViewed(frame, firstFile) && sidebarChecked(),
         );
-        expect(sidebarBold()).toBe(false);
+        expect(sidebarChecked()).toBe(true);
         clickViewedCheckbox(session, firstFile, true);
         await harness.waitForSnapshot(
           session,
-          (frame) => !isViewed(frame, firstFile) && sidebarBold(),
+          (frame) => !isViewed(frame, firstFile) && !sidebarChecked(),
         );
-        expect(sidebarBold()).toBe(true);
+        expect(sidebarChecked()).toBe(false);
       } finally {
         session.close();
       }
@@ -291,12 +291,12 @@ describe("PTY viewed files", () => {
         (frame) => isViewed(frame, firstFile) && !frame.includes(firstBody),
       );
       await harness.pressAndWaitForSnapshot(session, ".", (frame) =>
-        frame.includes(`▌M ${secondFile}`),
+        frame.includes(`▌  M ${secondFile}`),
       );
       const jumped = await harness.clickAndWaitForSnapshot(
         session,
         /M a-first\.ts/,
-        (frame) => frame.includes(`▌M ${firstFile}`) && isViewed(frame, firstFile),
+        (frame) => frame.includes(`▌✓ M ${firstFile}`) && isViewed(frame, firstFile),
       );
       expect(jumped).not.toContain(firstBody);
       expect(jumped).toContain(secondBody);

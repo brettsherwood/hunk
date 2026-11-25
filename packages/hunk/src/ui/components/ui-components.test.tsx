@@ -547,8 +547,8 @@ describe("UI components", () => {
     expect(frame).toContain("./");
     expect(frame).toContain(" zzz-root.ts");
     expect(frame.indexOf("src/ui/")).toBeLessThan(frame.indexOf("./"));
-    expect(frame).toContain("▌ M App.tsx");
-    expect(frame).toContain(" MenuDropdown.tsx");
+    expect(frame).toContain("▌   M App.tsx");
+    expect(frame).toContain(" MenuDropdown.…");
     expect(frame).toContain(" signature.ts");
     expect(frame).toContain("*1 +2 -1");
     expect(frame).toContain("+5");
