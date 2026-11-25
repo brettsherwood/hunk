@@ -1357,6 +1357,8 @@ export interface ExtensionPaneProps {
   /** Immutable review-source metadata, or null for ordinary reviews. */
   readonly review: ExtensionReviewDescriptor | null;
   readonly files: readonly ExtensionDiffFile[];
+  /** Frozen runtime file ids marked Viewed in this session; absent means none. */
+  readonly viewedFileIds?: readonly string[];
   readonly selectedFileId: string | null;
   readonly selectedHunkIndex: number | null;
   readonly placement: ExtensionPanePlacement;

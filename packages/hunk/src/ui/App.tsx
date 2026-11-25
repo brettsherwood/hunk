@@ -1565,6 +1565,7 @@ export function App({
           review={bootstrap.review ?? null}
           files={filteredFiles}
           fileViews={getRenderExtensionFileViews()}
+          viewedFileIds={review.viewedFileIds}
           selectedFileId={selection.file?.id ?? null}
           selectedHunkIndex={selection.hunkIndex}
           placement={pane.placement}

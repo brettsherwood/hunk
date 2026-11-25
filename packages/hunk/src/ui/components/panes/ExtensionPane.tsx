@@ -80,6 +80,7 @@ export interface ExtensionPaneHostProps {
   review?: ExtensionPaneProps["review"];
   files: DiffFile[];
   fileViews: ExtensionDiffFile[];
+  viewedFileIds?: ReadonlySet<string>;
   selectedFileId: string | null;
   selectedHunkIndex: number | null;
   placement: ExtensionPaneProps["placement"];
@@ -103,6 +104,7 @@ function ExtensionPaneHostView({
   review = null,
   files,
   fileViews,
+  viewedFileIds,
   selectedFileId,
   selectedHunkIndex,
   placement,
@@ -149,9 +151,14 @@ function ExtensionPaneHostView({
     [extensionId, files],
   );
   const View = registered.pane.component as (props: ExtensionPaneProps) => ReactNode;
+  const publicViewedFileIds = useMemo(
+    () => Object.freeze([...(viewedFileIds ?? [])]),
+    [viewedFileIds],
+  );
   const viewProps: ExtensionPaneProps = {
     review,
     files: fileViews,
+    viewedFileIds: publicViewedFileIds,
     selectedFileId,
     selectedHunkIndex,
     placement,
@@ -218,6 +225,7 @@ export const ExtensionPaneHost = memo(
   (previous, next) =>
     previous.registered === next.registered &&
     previous.review === next.review &&
+    previous.viewedFileIds === next.viewedFileIds &&
     previous.files.length === next.files.length &&
     previous.files.every((file, index) => file === next.files[index]) &&
     previous.selectedFileId === next.selectedFileId &&

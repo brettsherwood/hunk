@@ -400,3 +400,7 @@ so an import there publishes Hunk internals (`scripts/packaging/check-pack.ts` f
 the pack when it does, and typechecks every `docs/extensions.md` example as
 a consumer). Shapes shared with internal code are declared there and
 re-exported inward.
+
+The pane host projects session Viewed state into the optional frozen `viewedFileIds`
+array. Pane memoization includes that state, so the bundled Files pane updates filename
+weight on toggles and content reconciliation without owning a second review store.

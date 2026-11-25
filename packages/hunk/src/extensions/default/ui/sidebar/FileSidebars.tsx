@@ -29,7 +29,7 @@ export type BuiltInSidebarProps = Omit<
 
 type FileSidebarVariantProps = Pick<
   BuiltInSidebarProps,
-  "actions" | "files" | "selectedFileId" | "theme"
+  "actions" | "files" | "selectedFileId" | "theme" | "viewedFileIds"
 > & {
   estimatedViewportRows: number;
   scrollTop: number;
@@ -60,7 +60,9 @@ export function VirtualizedFileSidebarRows({
   textWidth,
   theme,
   viewportHeight,
+  viewedFileIds,
 }: VirtualizedFileSidebarRowsProps): ReactNode {
+  const viewedIds = useMemo(() => new Set(viewedFileIds), [viewedFileIds]);
   const fileEntries = entries.filter((entry) => entry.kind === "file");
   const statsWidth = Math.max(0, ...fileEntries.map((entry) => sidebarEntryStatsWidth(entry)));
   const renderWindow = useMemo(
@@ -121,6 +123,7 @@ export function VirtualizedFileSidebarRows({
             entry={entry}
             paddingLeft={paddingLeft}
             selected={entry.id === selectedFileId}
+            viewed={viewedIds.has(entry.id)}
             statsWidth={statsWidth}
             textWidth={textWidth}
             theme={theme}
@@ -176,6 +179,7 @@ export function FlexFileSidebar({
   theme,
   width,
   actions,
+  viewedFileIds,
 }: BuiltInSidebarProps): ReactNode {
   const scrollRef = useRef<ScrollBoxRenderable | null>(null);
   const previousSelectedFileIdRef = useRef(selectedFileId);
@@ -197,6 +201,7 @@ export function FlexFileSidebar({
     textWidth,
     theme,
     viewportHeight: scrollViewport.height,
+    viewedFileIds,
   };
 
   /** Toggle one logical directory everywhere it appears in the ordered tree projection. */

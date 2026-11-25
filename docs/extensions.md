@@ -970,6 +970,7 @@ The component receives fresh props as the app changes:
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `review`            | immutable review-source metadata (`change-request`, `commit`, or `comparison`), or `null` for ordinary reviews                                                            |
 | `files`             | the visible reviewed files, review-stream order, filtered, frozen views (each carries `changeType`, `statsTruncated`, and `hunks` summaries beside the usual file fields) |
+| `viewedFileIds`     | optional frozen array of runtime file ids marked Viewed in the current session; absent means none                                                                         |
 | `selectedFileId`    | the selected file, or `null`                                                                                                                                              |
 | `selectedHunkIndex` | the selected hunk within that file, or `null`                                                                                                                             |
 | `placement`         | the accepted terminal edge                                                                                                                                                |

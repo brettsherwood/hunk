@@ -102,6 +102,46 @@ async function waitForViewedReview(session: Session, options?: { deep?: boolean 
 }
 
 describe("PTY viewed files", () => {
+  for (const cols of [90, 160]) {
+    test(`Files pane reflects keyboard and mouse Viewed toggles at ${cols} columns`, async () => {
+      const fixture = createViewedFilesTestFixture();
+      const session = await harness.launchHunk({
+        args: ["diff", "--mode", "smart", "--sidebar"],
+        cwd: fixture.dir,
+        cols,
+        rows: 24,
+      });
+      /** Read the filename style from the sidebar occurrence before the diff header. */
+      const sidebarBold = () => {
+        for (const line of session.getTerminalData().lines) {
+          const text = line.spans.map((span) => span.text).join("");
+          if (text.indexOf(firstFile) < 0 || text.indexOf(firstFile) > 25) continue;
+          const span = line.spans.find((span) => span.text.includes(firstFile));
+          if (span) return (span.flags & 1) !== 0;
+        }
+        throw new Error("Expected the first filename in the Files pane.");
+      };
+      try {
+        await waitForViewedReview(session, { deep: true });
+        expect(sidebarBold()).toBe(true);
+        await session.press(["shift", "v"]);
+        await harness.waitForSnapshot(
+          session,
+          (frame) => isViewed(frame, firstFile) && !sidebarBold(),
+        );
+        expect(sidebarBold()).toBe(false);
+        clickViewedCheckbox(session, firstFile, true);
+        await harness.waitForSnapshot(
+          session,
+          (frame) => !isViewed(frame, firstFile) && sidebarBold(),
+        );
+        expect(sidebarBold()).toBe(true);
+      } finally {
+        session.close();
+      }
+    });
+  }
+
   test("Viewed remains in one column beside different counts and checkbox states", async () => {
     const fixture = createViewedFilesTestFixture();
     writeFileSync(

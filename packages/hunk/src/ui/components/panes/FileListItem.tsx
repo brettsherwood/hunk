@@ -1,4 +1,4 @@
-import { MouseButton, type MouseEvent as TuiMouseEvent } from "@opentui/core";
+import { TextAttributes, MouseButton, type MouseEvent as TuiMouseEvent } from "@opentui/core";
 import { memo } from "react";
 import type { ExtensionSidebarTheme } from "../../../extension-api/types";
 import { diffRailMarker } from "../../diff/rowStyle";
@@ -153,6 +153,7 @@ export const FileListItem = memo(function FileListItem({
   entry,
   paddingLeft = 1,
   selected,
+  viewed = false,
   statsWidth,
   textWidth,
   theme,
@@ -161,6 +162,7 @@ export const FileListItem = memo(function FileListItem({
   entry: FileListEntry;
   paddingLeft?: number;
   selected: boolean;
+  viewed?: boolean;
   statsWidth: number;
   textWidth: number;
   theme: ExtensionSidebarTheme;
@@ -202,7 +204,9 @@ export const FileListItem = memo(function FileListItem({
         }}
       >
         {icon && <text fg={color}>{icon} </text>}
-        <text fg={theme.text}>{padText(fitText(entry.name, nameWidth, "…"), nameWidth)}</text>
+        <text fg={theme.text} attributes={viewed ? TextAttributes.NONE : TextAttributes.BOLD}>
+          {padText(fitText(entry.name, nameWidth, "…"), nameWidth)}
+        </text>
         {statsSectionWidth > 0 && (
           <box
             style={{

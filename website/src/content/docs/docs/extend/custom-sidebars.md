@@ -209,3 +209,7 @@ export default function (hunk: HunkExtensionAPI) {
 ```
 
 Snapshots must be immutable — replace the set instead of mutating it, so `useSyncExternalStore` can compare references. Storing state in a hook inside the component instead would lose it every time the pane closes and unmounts.
+
+The optional `viewedFileIds` pane prop is a frozen array of runtime file ids marked Viewed
+in the current session. An absent prop means none. It updates on toggles and reloads;
+the built-in Files pane uses it to render unviewed filenames in bold.
