@@ -999,7 +999,7 @@ describe("PTY notes", () => {
     try {
       const initial = await session.waitForText(/before_01/, { timeout: 15_000 });
       const targetRow = lineIndexOf(initial, "before_01");
-      const sidebarRow = /\bM scroll\.ts\s+\+40 -40/;
+      const sidebarRow = /▌   M scroll…\s+\+40 -40/;
 
       expect(targetRow).toBeGreaterThan(0);
       expect(initial).not.toMatch(sidebarRow);
