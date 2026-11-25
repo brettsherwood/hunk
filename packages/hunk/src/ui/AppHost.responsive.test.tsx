@@ -198,7 +198,7 @@ describe("responsive app", () => {
       });
 
       frame = setup.captureCharFrame();
-      expect((frame.match(/alpha\.ts/g) ?? []).length).toBe(2);
+      expect(frame).toContain("  M alpha");
     } finally {
       await act(async () => {
         setup.renderer.destroy();
